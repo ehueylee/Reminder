@@ -802,9 +802,13 @@ def suggest_snooze_times(reminder: dict, current_time: datetime) -> List[dict]:
 - **PostgreSQL**: Can run locally via Docker or installer
 - **Redis**: Local instance for caching (optional in Phase 1)
 
-#### Week 1-2: Core Infrastructure (Local Setup)
+---
 
-**Development Environment Setup**
+## Sub-Phase 1.1: Database Foundation (3-4 days)
+
+**Goal**: Set up database schema and basic CRUD operations
+
+### Setup
 
 ```bash
 # 1. Create project directory
@@ -815,93 +819,1620 @@ cd reminder-app
 python -m venv venv
 source venv/bin/activate  # On Windows: venv\Scripts\activate
 
-# 3. Install dependencies
-pip install fastapi uvicorn sqlalchemy pydantic python-dotenv openai
+# 3. Install minimal dependencies
+pip install sqlalchemy python-dotenv pytest
 
 # 4. Create .env file
 cat > .env << EOF
-OPENAI_API_KEY=sk-your-key-here
 DATABASE_URL=sqlite:///./reminders.db
-SECRET_KEY=your-secret-key-for-jwt
 ENVIRONMENT=development
 EOF
 ```
 
-**Tasks**
-- [ ] Set up Python/Node.js project structure
-- [ ] Install core dependencies
-- [ ] Create SQLite database schema
-- [ ] Implement simple JWT authentication (no external auth service)
-- [ ] Basic API endpoints (CRUD operations)
-- [ ] OpenAI API integration setup
+### Implementation Tasks
 
-**Deliverable**: REST API running on `http://localhost:8000`
+- [ ] Create database models (`models.py`)
+- [ ] Set up SQLAlchemy connection (`database.py`)
+- [ ] Implement CRUD functions for reminders (`crud.py`)
+- [ ] Create database initialization script
 
-#### Week 3-4: Reminder Engine
+### Code Structure
 
-**Local Implementation**
-- [ ] Natural language parsing with OpenAI (using GPT-4o-mini for cost savings)
-- [ ] Basic reminder storage and retrieval with SQLite
-- [ ] Timezone handling using Python's `pytz` or JavaScript's `date-fns-tz`
-- [ ] Simple notification system:
-  - Console logging (Phase 1)
-  - Email via Gmail SMTP (free, no service needed)
-  - Browser notifications (for web interface)
-
-**Cost-Saving Tips**
 ```python
-# Use GPT-4o-mini for development (10x cheaper than GPT-4)
-response = client.chat.completions.create(
-    model="gpt-4o-mini",  # $0.150 per 1M input tokens
-    messages=[...],
-    max_tokens=500  # Limit response size
+# models.py
+from sqlalchemy import Column, String, DateTime, Boolean, JSON, Integer
+from sqlalchemy.ext.declarative import declarative_base
+from datetime import datetime
+import uuid
+
+Base = declarative_base()
+
+class Reminder(Base):
+    __tablename__ = "reminders"
+    
+    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    user_id = Column(String, nullable=False, index=True)
+    title = Column(String(500), nullable=False)
+    description = Column(String, nullable=True)
+    due_date_time = Column(DateTime, nullable=False, index=True)
+    timezone = Column(String(50), nullable=False, default="UTC")
+    
+    is_recurring = Column(Boolean, default=False)
+    recurrence_pattern = Column(JSON, nullable=True)
+    
+    status = Column(String(20), default="active", index=True)
+    completed_at = Column(DateTime, nullable=True)
+    
+    priority = Column(String(20), default="medium")
+    tags = Column(JSON, default=list)
+    
+    natural_language_input = Column(String, nullable=True)
+    parsed_by_ai = Column(Boolean, default=False)
+    
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+```
+
+### POC Demo
+
+```python
+# demo_database.py
+from database import SessionLocal, engine, init_db
+from models import Base, Reminder
+from datetime import datetime, timedelta
+
+def demo():
+    """Demonstrate database CRUD operations."""
+    
+    # Initialize database
+    init_db()
+    print("✅ Database initialized")
+    
+    # Create session
+    db = SessionLocal()
+    
+    # Create a reminder
+    reminder = Reminder(
+        user_id="demo_user",
+        title="Test Reminder",
+        description="This is a test",
+        due_date_time=datetime.utcnow() + timedelta(days=1),
+        timezone="America/New_York",
+        priority="high",
+        tags=["test", "demo"]
+    )
+    db.add(reminder)
+    db.commit()
+    print(f"✅ Created reminder: {reminder.id}")
+    
+    # Read reminders
+    reminders = db.query(Reminder).filter_by(user_id="demo_user").all()
+    print(f"✅ Found {len(reminders)} reminder(s)")
+    for r in reminders:
+        print(f"   - {r.title} (due: {r.due_date_time})")
+    
+    # Update reminder
+    reminder.status = "completed"
+    reminder.completed_at = datetime.utcnow()
+    db.commit()
+    print(f"✅ Updated reminder status to: {reminder.status}")
+    
+    # Delete reminder
+    db.delete(reminder)
+    db.commit()
+    print(f"✅ Deleted reminder")
+    
+    db.close()
+    print("\n🎉 Database POC Demo Complete!")
+
+if __name__ == "__main__":
+    demo()
+```
+
+### Integration Tests
+
+```python
+# tests/test_database.py
+import pytest
+from datetime import datetime, timedelta
+from database import SessionLocal, init_db
+from models import Reminder
+
+@pytest.fixture
+def db_session():
+    """Create a test database session."""
+    init_db()
+    db = SessionLocal()
+    yield db
+    db.close()
+
+def test_create_reminder(db_session):
+    """Test creating a reminder."""
+    reminder = Reminder(
+        user_id="test_user",
+        title="Test Reminder",
+        due_date_time=datetime.utcnow() + timedelta(days=1),
+        timezone="UTC"
+    )
+    db_session.add(reminder)
+    db_session.commit()
+    
+    assert reminder.id is not None
+    assert reminder.status == "active"
+    assert reminder.created_at is not None
+
+def test_read_reminders(db_session):
+    """Test reading reminders."""
+    # Create test reminders
+    for i in range(3):
+        reminder = Reminder(
+            user_id="test_user",
+            title=f"Reminder {i}",
+            due_date_time=datetime.utcnow() + timedelta(days=i+1),
+            timezone="UTC"
+        )
+        db_session.add(reminder)
+    db_session.commit()
+    
+    # Query reminders
+    reminders = db_session.query(Reminder).filter_by(user_id="test_user").all()
+    assert len(reminders) == 3
+
+def test_update_reminder(db_session):
+    """Test updating a reminder."""
+    reminder = Reminder(
+        user_id="test_user",
+        title="Test",
+        due_date_time=datetime.utcnow() + timedelta(days=1),
+        timezone="UTC"
+    )
+    db_session.add(reminder)
+    db_session.commit()
+    
+    reminder.status = "completed"
+    reminder.completed_at = datetime.utcnow()
+    db_session.commit()
+    
+    updated = db_session.query(Reminder).filter_by(id=reminder.id).first()
+    assert updated.status == "completed"
+    assert updated.completed_at is not None
+
+def test_delete_reminder(db_session):
+    """Test deleting a reminder."""
+    reminder = Reminder(
+        user_id="test_user",
+        title="Test",
+        due_date_time=datetime.utcnow() + timedelta(days=1),
+        timezone="UTC"
+    )
+    db_session.add(reminder)
+    db_session.commit()
+    reminder_id = reminder.id
+    
+    db_session.delete(reminder)
+    db_session.commit()
+    
+    deleted = db_session.query(Reminder).filter_by(id=reminder_id).first()
+    assert deleted is None
+```
+
+### Run Tests
+
+```bash
+# Install pytest
+pip install pytest
+
+# Run tests
+pytest tests/test_database.py -v
+
+# Expected output:
+# tests/test_database.py::test_create_reminder PASSED
+# tests/test_database.py::test_read_reminders PASSED
+# tests/test_database.py::test_update_reminder PASSED
+# tests/test_database.py::test_delete_reminder PASSED
+```
+
+### Verification Checklist
+
+- [ ] Database file created (`reminders.db`)
+- [ ] Can create reminders with all fields
+- [ ] Can query reminders by user_id and status
+- [ ] Can update reminder status and fields
+- [ ] Can delete reminders
+- [ ] All tests pass
+
+**Deliverable**: Working database layer with passing tests
+
+---
+
+## Sub-Phase 1.2: OpenAI Integration (3-4 days)
+
+**Goal**: Parse natural language into structured reminder data
+
+### Setup
+
+```bash
+# Install additional dependencies
+pip install openai pydantic
+
+# Update .env file
+echo "OPENAI_API_KEY=sk-your-key-here" >> .env
+```
+
+### Implementation Tasks
+
+- [ ] Create OpenAI service module (`openai_service.py`)
+- [ ] Define Pydantic schemas for structured output
+- [ ] Implement natural language parsing with function calling
+- [ ] Add caching for common patterns
+- [ ] Handle parsing errors gracefully
+
+### Code Structure
+
+```python
+# openai_service.py
+import os
+import openai
+from openai import OpenAI
+from pydantic import BaseModel
+from typing import Optional, List, Literal
+from datetime import datetime
+import json
+
+client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+
+class RecurrencePattern(BaseModel):
+    frequency: Literal['daily', 'weekly', 'monthly', 'yearly']
+    interval: int = 1
+    days_of_week: Optional[List[int]] = None
+
+class ParsedReminder(BaseModel):
+    title: str
+    description: Optional[str] = None
+    due_date_time: str  # ISO 8601 format
+    timezone: str = "UTC"
+    is_recurring: bool = False
+    recurrence_pattern: Optional[RecurrencePattern] = None
+    priority: Literal['low', 'medium', 'high', 'urgent'] = 'medium'
+    tags: List[str] = []
+
+def parse_reminder(natural_input: str, user_timezone: str = "UTC") -> dict:
+    """Parse natural language into structured reminder data."""
+    
+    current_time = datetime.now().isoformat()
+    
+    messages = [
+        {
+            "role": "system",
+            "content": f"""You are a reminder parsing assistant.
+Current time: {current_time}
+User timezone: {user_timezone}
+
+Parse the user's input into a structured reminder.
+Convert relative times to absolute ISO 8601 format.
+Detect recurring patterns and priority from context."""
+        },
+        {
+            "role": "user",
+            "content": natural_input
+        }
+    ]
+    
+    tools = [openai.pydantic_function_tool(ParsedReminder)]
+    
+    response = client.chat.completions.create(
+        model="gpt-4o-mini",
+        messages=messages,
+        tools=tools,
+        tool_choice="required"
+    )
+    
+    tool_call = response.choices[0].message.tool_calls[0]
+    parsed_data = json.loads(tool_call.function.arguments)
+    
+    return {
+        "parsed": parsed_data,
+        "original_input": natural_input,
+        "confidence": 0.95
+    }
+```
+
+### POC Demo
+
+```python
+# demo_openai.py
+from openai_service import parse_reminder
+from dotenv import load_dotenv
+
+load_dotenv()
+
+def demo():
+    """Demonstrate OpenAI parsing capabilities."""
+    
+    test_inputs = [
+        "Remind me to call mom tomorrow at 3pm",
+        "Every Monday at 9am team standup meeting",
+        "URGENT: Submit report by Friday 5pm",
+        "Buy groceries next Saturday morning",
+        "Weekly team lunch every Thursday at noon"
+    ]
+    
+    print("🤖 OpenAI Natural Language Parsing Demo\n")
+    
+    for input_text in test_inputs:
+        print(f"Input: '{input_text}'")
+        
+        try:
+            result = parse_reminder(input_text, user_timezone="America/New_York")
+            parsed = result['parsed']
+            
+            print(f"✅ Title: {parsed['title']}")
+            print(f"   Due: {parsed['due_date_time']}")
+            print(f"   Priority: {parsed['priority']}")
+            print(f"   Recurring: {parsed['is_recurring']}")
+            if parsed.get('tags'):
+                print(f"   Tags: {', '.join(parsed['tags'])}")
+            print()
+            
+        except Exception as e:
+            print(f"❌ Error: {e}\n")
+    
+    print("🎉 OpenAI POC Demo Complete!")
+
+if __name__ == "__main__":
+    demo()
+```
+
+### Integration Tests
+
+```python
+# tests/test_openai_service.py
+import pytest
+from openai_service import parse_reminder
+from datetime import datetime
+import os
+
+@pytest.fixture
+def openai_available():
+    """Check if OpenAI API key is available."""
+    if not os.getenv("OPENAI_API_KEY"):
+        pytest.skip("OpenAI API key not available")
+
+def test_parse_simple_reminder(openai_available):
+    """Test parsing a simple reminder."""
+    result = parse_reminder("Remind me to call John tomorrow at 3pm")
+    parsed = result['parsed']
+    
+    assert 'call' in parsed['title'].lower() or 'john' in parsed['title'].lower()
+    assert parsed['due_date_time'] is not None
+    assert parsed['priority'] in ['low', 'medium', 'high', 'urgent']
+
+def test_parse_urgent_reminder(openai_available):
+    """Test detecting urgency."""
+    result = parse_reminder("URGENT: Submit report today")
+    parsed = result['parsed']
+    
+    assert parsed['priority'] in ['high', 'urgent']
+
+def test_parse_recurring_reminder(openai_available):
+    """Test parsing recurring patterns."""
+    result = parse_reminder("Every Monday at 9am team meeting")
+    parsed = result['parsed']
+    
+    assert parsed['is_recurring'] == True
+    assert parsed['recurrence_pattern'] is not None
+    assert parsed['recurrence_pattern']['frequency'] == 'weekly'
+
+def test_parse_with_timezone(openai_available):
+    """Test timezone handling."""
+    result = parse_reminder(
+        "Meeting tomorrow at 2pm",
+        user_timezone="America/Los_Angeles"
+    )
+    parsed = result['parsed']
+    
+    assert parsed['timezone'] is not None
+
+def test_error_handling():
+    """Test handling of empty or invalid input."""
+    with pytest.raises(Exception):
+        parse_reminder("")
+```
+
+### Run Tests
+
+```bash
+pytest tests/test_openai_service.py -v
+
+# Expected output:
+# tests/test_openai_service.py::test_parse_simple_reminder PASSED
+# tests/test_openai_service.py::test_parse_urgent_reminder PASSED
+# tests/test_openai_service.py::test_parse_recurring_reminder PASSED
+# tests/test_openai_service.py::test_parse_with_timezone PASSED
+```
+
+### Verification Checklist
+
+- [ ] Can parse simple time expressions ("tomorrow at 3pm")
+- [ ] Detects urgency from keywords (URGENT, ASAP)
+- [ ] Identifies recurring patterns (daily, weekly, monthly)
+- [ ] Handles timezone conversions
+- [ ] Returns structured JSON output
+- [ ] All tests pass
+
+**Deliverable**: Working OpenAI parser with passing tests
+
+---
+
+## Sub-Phase 1.3: REST API (4-5 days)
+
+**Goal**: Create FastAPI endpoints to manage reminders
+
+### Setup
+
+```bash
+# Install FastAPI dependencies
+pip install fastapi uvicorn python-jose[cryptography] passlib[bcrypt]
+```
+
+### Implementation Tasks
+
+- [ ] Create FastAPI application (`main.py`)
+- [ ] Implement authentication (simple JWT)
+- [ ] Create API endpoints (CRUD + parse)
+- [ ] Add request/response schemas
+- [ ] Add error handling
+- [ ] Enable CORS for frontend
+
+### Code Structure
+
+```python
+# main.py
+from fastapi import FastAPI, Depends, HTTPException, status
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
+from typing import List, Optional
+from datetime import datetime
+import os
+
+from database import SessionLocal, init_db
+from models import Reminder
+from openai_service import parse_reminder
+
+app = FastAPI(title="Reminder API", version="1.0.0")
+
+# CORS for local development
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
-# Cache common parsing patterns locally
-import shelve
-cache = shelve.open('reminder_cache.db')
+# Initialize database on startup
+@app.on_event("startup")
+def startup():
+    init_db()
+
+# Dependency to get DB session
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+
+# Request/Response schemas
+class CreateReminderRequest(BaseModel):
+    natural_language_input: str
+    timezone: Optional[str] = "UTC"
+
+class ReminderResponse(BaseModel):
+    id: str
+    title: str
+    description: Optional[str]
+    due_date_time: datetime
+    status: str
+    priority: str
+    
+    class Config:
+        from_attributes = True
+
+# Endpoints
+@app.post("/api/reminders", response_model=ReminderResponse)
+def create_reminder(request: CreateReminderRequest, db = Depends(get_db)):
+    """Create a reminder from natural language."""
+    
+    # Parse with OpenAI
+    parsed = parse_reminder(request.natural_language_input, request.timezone)
+    parsed_data = parsed['parsed']
+    
+    # Create reminder
+    reminder = Reminder(
+        user_id="default_user",  # TODO: Get from auth
+        title=parsed_data['title'],
+        description=parsed_data.get('description'),
+        due_date_time=datetime.fromisoformat(parsed_data['due_date_time']),
+        timezone=parsed_data['timezone'],
+        priority=parsed_data['priority'],
+        tags=parsed_data.get('tags', []),
+        natural_language_input=request.natural_language_input,
+        parsed_by_ai=True
+    )
+    
+    db.add(reminder)
+    db.commit()
+    db.refresh(reminder)
+    
+    return reminder
+
+@app.get("/api/reminders", response_model=List[ReminderResponse])
+def list_reminders(
+    status: Optional[str] = "active",
+    limit: int = 50,
+    db = Depends(get_db)
+):
+    """List reminders."""
+    
+    query = db.query(Reminder).filter_by(user_id="default_user")
+    
+    if status:
+        query = query.filter_by(status=status)
+    
+    reminders = query.order_by(Reminder.due_date_time).limit(limit).all()
+    return reminders
+
+@app.get("/api/reminders/{reminder_id}", response_model=ReminderResponse)
+def get_reminder(reminder_id: str, db = Depends(get_db)):
+    """Get a specific reminder."""
+    
+    reminder = db.query(Reminder).filter_by(id=reminder_id).first()
+    if not reminder:
+        raise HTTPException(status_code=404, detail="Reminder not found")
+    
+    return reminder
+
+@app.put("/api/reminders/{reminder_id}/complete")
+def complete_reminder(reminder_id: str, db = Depends(get_db)):
+    """Mark reminder as complete."""
+    
+    reminder = db.query(Reminder).filter_by(id=reminder_id).first()
+    if not reminder:
+        raise HTTPException(status_code=404, detail="Reminder not found")
+    
+    reminder.status = "completed"
+    reminder.completed_at = datetime.utcnow()
+    db.commit()
+    
+    return {"message": "Reminder completed"}
+
+@app.delete("/api/reminders/{reminder_id}")
+def delete_reminder(reminder_id: str, db = Depends(get_db)):
+    """Delete a reminder."""
+    
+    reminder = db.query(Reminder).filter_by(id=reminder_id).first()
+    if not reminder:
+        raise HTTPException(status_code=404, detail="Reminder not found")
+    
+    db.delete(reminder)
+    db.commit()
+    
+    return {"message": "Reminder deleted"}
+
+@app.get("/health")
+def health_check():
+    """Health check endpoint."""
+    return {"status": "healthy", "timestamp": datetime.utcnow().isoformat()}
 ```
 
-**Deliverable**: Functional reminder parsing and storage
+### POC Demo
 
-#### Week 5-6: User Interface
-
-**Simple Local Frontend Options**
-
-**Option A: Command Line Interface (Fastest)**
 ```bash
-# Create reminder
-python cli.py add "Remind me to call mom tomorrow at 3pm"
+# Start the server
+uvicorn main:app --reload --port 8000
 
-# List reminders
+# In another terminal, test the API:
+
+# 1. Health check
+curl http://localhost:8000/health
+
+# 2. Create a reminder
+curl -X POST http://localhost:8000/api/reminders \
+  -H "Content-Type: application/json" \
+  -d '{"natural_language_input": "Remind me to test the API tomorrow at 2pm"}'
+
+# 3. List reminders
+curl http://localhost:8000/api/reminders
+
+# 4. Complete a reminder (use ID from previous response)
+curl -X PUT http://localhost:8000/api/reminders/<reminder-id>/complete
+
+# 5. Delete a reminder
+curl -X DELETE http://localhost:8000/api/reminders/<reminder-id>
+
+# 6. Open interactive docs
+# Visit http://localhost:8000/docs in your browser
+```
+
+### Integration Tests
+
+```python
+# tests/test_api.py
+import pytest
+from fastapi.testclient import TestClient
+from main import app
+from database import init_db
+
+client = TestClient(app)
+
+@pytest.fixture(autouse=True)
+def setup_database():
+    """Initialize database before each test."""
+    init_db()
+
+def test_health_check():
+    """Test health check endpoint."""
+    response = client.get("/health")
+    assert response.status_code == 200
+    assert response.json()["status"] == "healthy"
+
+def test_create_reminder():
+    """Test creating a reminder."""
+    response = client.post(
+        "/api/reminders",
+        json={
+            "natural_language_input": "Remind me to test tomorrow at 2pm",
+            "timezone": "UTC"
+        }
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert "id" in data
+    assert data["status"] == "active"
+
+def test_list_reminders():
+    """Test listing reminders."""
+    # Create a reminder first
+    client.post(
+        "/api/reminders",
+        json={"natural_language_input": "Test reminder tomorrow"}
+    )
+    
+    response = client.get("/api/reminders")
+    assert response.status_code == 200
+    data = response.json()
+    assert isinstance(data, list)
+    assert len(data) > 0
+
+def test_get_reminder():
+    """Test getting a specific reminder."""
+    # Create a reminder
+    create_response = client.post(
+        "/api/reminders",
+        json={"natural_language_input": "Test reminder"}
+    )
+    reminder_id = create_response.json()["id"]
+    
+    # Get the reminder
+    response = client.get(f"/api/reminders/{reminder_id}")
+    assert response.status_code == 200
+    assert response.json()["id"] == reminder_id
+
+def test_complete_reminder():
+    """Test completing a reminder."""
+    # Create a reminder
+    create_response = client.post(
+        "/api/reminders",
+        json={"natural_language_input": "Test reminder"}
+    )
+    reminder_id = create_response.json()["id"]
+    
+    # Complete it
+    response = client.put(f"/api/reminders/{reminder_id}/complete")
+    assert response.status_code == 200
+    
+    # Verify status changed
+    get_response = client.get(f"/api/reminders/{reminder_id}")
+    assert get_response.json()["status"] == "completed"
+
+def test_delete_reminder():
+    """Test deleting a reminder."""
+    # Create a reminder
+    create_response = client.post(
+        "/api/reminders",
+        json={"natural_language_input": "Test reminder"}
+    )
+    reminder_id = create_response.json()["id"]
+    
+    # Delete it
+    response = client.delete(f"/api/reminders/{reminder_id}")
+    assert response.status_code == 200
+    
+    # Verify it's gone
+    get_response = client.get(f"/api/reminders/{reminder_id}")
+    assert get_response.status_code == 404
+```
+
+### Run Tests
+
+```bash
+pytest tests/test_api.py -v
+
+# Expected output:
+# tests/test_api.py::test_health_check PASSED
+# tests/test_api.py::test_create_reminder PASSED
+# tests/test_api.py::test_list_reminders PASSED
+# tests/test_api.py::test_get_reminder PASSED
+# tests/test_api.py::test_complete_reminder PASSED
+# tests/test_api.py::test_delete_reminder PASSED
+```
+
+### Verification Checklist
+
+- [ ] Server starts without errors
+- [ ] Interactive docs available at `/docs`
+- [ ] Can create reminders via API
+- [ ] Can list reminders with filters
+- [ ] Can complete reminders
+- [ ] Can delete reminders
+- [ ] All tests pass
+- [ ] CORS enabled for frontend
+
+**Deliverable**: Working REST API with passing tests
+
+---
+
+## Sub-Phase 1.4: Simple UI (3-4 days)
+
+**Goal**: Create a basic interface to interact with reminders
+
+### Option A: Command Line Interface
+
+```python
+# cli.py
+import click
+import requests
+from datetime import datetime
+from tabulate import tabulate
+
+API_BASE_URL = "http://localhost:8000"
+
+@click.group()
+def cli():
+    """Reminder CLI - Manage your reminders from the command line."""
+    pass
+
+@cli.command()
+@click.argument('text')
+def add(text):
+    """Add a new reminder using natural language."""
+    try:
+        response = requests.post(
+            f"{API_BASE_URL}/api/reminders",
+            json={"natural_language_input": text}
+        )
+        response.raise_for_status()
+        data = response.json()
+        
+        click.echo(f"✅ Reminder created:")
+        click.echo(f"   ID: {data['id']}")
+        click.echo(f"   Title: {data['title']}")
+        click.echo(f"   Due: {data['due_date_time']}")
+        click.echo(f"   Priority: {data['priority']}")
+    except Exception as e:
+        click.echo(f"❌ Error: {e}", err=True)
+
+@cli.command()
+@click.option('--status', default='active', help='Filter by status')
+def list(status):
+    """List all reminders."""
+    try:
+        response = requests.get(
+            f"{API_BASE_URL}/api/reminders",
+            params={"status": status}
+        )
+        response.raise_for_status()
+        reminders = response.json()
+        
+        if not reminders:
+            click.echo("No reminders found.")
+            return
+        
+        # Format as table
+        table_data = []
+        for r in reminders:
+            due = datetime.fromisoformat(r['due_date_time'].replace('Z', '+00:00'))
+            table_data.append([
+                r['id'][:8],
+                r['title'][:40],
+                due.strftime('%Y-%m-%d %H:%M'),
+                r['priority'],
+                r['status']
+            ])
+        
+        headers = ['ID', 'Title', 'Due Date', 'Priority', 'Status']
+        click.echo(tabulate(table_data, headers=headers, tablefmt='grid'))
+        
+    except Exception as e:
+        click.echo(f"❌ Error: {e}", err=True)
+
+@cli.command()
+@click.argument('reminder_id')
+def complete(reminder_id):
+    """Mark a reminder as complete."""
+    try:
+        response = requests.put(f"{API_BASE_URL}/api/reminders/{reminder_id}/complete")
+        response.raise_for_status()
+        click.echo(f"✅ Reminder {reminder_id[:8]} marked as complete")
+    except Exception as e:
+        click.echo(f"❌ Error: {e}", err=True)
+
+@cli.command()
+@click.argument('reminder_id')
+def delete(reminder_id):
+    """Delete a reminder."""
+    if click.confirm(f'Are you sure you want to delete reminder {reminder_id[:8]}?'):
+        try:
+            response = requests.delete(f"{API_BASE_URL}/api/reminders/{reminder_id}")
+            response.raise_for_status()
+            click.echo(f"✅ Reminder {reminder_id[:8]} deleted")
+        except Exception as e:
+            click.echo(f"❌ Error: {e}", err=True)
+
+if __name__ == '__main__':
+    cli()
+```
+
+### Option B: Simple HTML Interface
+
+```html
+<!-- frontend/index.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reminder App</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 30px;
+            text-align: center;
+        }
+        .input-section {
+            margin-bottom: 30px;
+        }
+        .input-group {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+        input[type="text"] {
+            flex: 1;
+            padding: 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            font-size: 16px;
+        }
+        button {
+            padding: 15px 30px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+        }
+        button:hover { background: #5568d3; }
+        button:disabled { background: #ccc; cursor: not-allowed; }
+        .examples {
+            font-size: 14px;
+            color: #666;
+            margin-top: 10px;
+        }
+        .examples ul { padding-left: 20px; }
+        .reminders-list {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        .reminder-card {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            border-left: 4px solid #667eea;
+        }
+        .reminder-card.urgent { border-left-color: #e74c3c; }
+        .reminder-card.high { border-left-color: #f39c12; }
+        .reminder-card.medium { border-left-color: #3498db; }
+        .reminder-card.low { border-left-color: #95a5a6; }
+        .reminder-title {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #333;
+        }
+        .reminder-meta {
+            font-size: 14px;
+            color: #666;
+            margin-bottom: 15px;
+        }
+        .reminder-actions {
+            display: flex;
+            gap: 10px;
+        }
+        .btn-complete {
+            padding: 8px 16px;
+            background: #27ae60;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        .btn-delete {
+            padding: 8px 16px;
+            background: #e74c3c;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        .loading { text-align: center; padding: 20px; color: #666; }
+        .error {
+            background: #fee;
+            color: #c33;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        .empty-state {
+            text-align: center;
+            padding: 40px;
+            color: #999;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📝 My Reminders</h1>
+        
+        <div class="input-section">
+            <div class="input-group">
+                <input 
+                    type="text" 
+                    id="reminderInput" 
+                    placeholder="e.g., Remind me to call mom tomorrow at 3pm"
+                />
+                <button id="addButton">Add Reminder</button>
+            </div>
+            <div class="examples">
+                <strong>Try:</strong>
+                <ul>
+                    <li>"Remind me to review the proposal by Friday"</li>
+                    <li>"Every Monday at 9am team standup"</li>
+                    <li>"URGENT: Submit report today at 5pm"</li>
+                </ul>
+            </div>
+        </div>
+        
+        <div id="error" class="error" style="display: none;"></div>
+        <div id="reminders" class="reminders-list"></div>
+    </div>
+
+    <script>
+        const API_URL = 'http://localhost:8000';
+        
+        async function loadReminders() {
+            try {
+                const response = await fetch(`${API_URL}/api/reminders`);
+                const reminders = await response.json();
+                
+                const container = document.getElementById('reminders');
+                
+                if (reminders.length === 0) {
+                    container.innerHTML = '<div class="empty-state">No reminders yet. Add one above!</div>';
+                    return;
+                }
+                
+                container.innerHTML = reminders.map(r => `
+                    <div class="reminder-card ${r.priority}">
+                        <div class="reminder-title">${r.title}</div>
+                        <div class="reminder-meta">
+                            📅 ${new Date(r.due_date_time).toLocaleString()} 
+                            | 🎯 ${r.priority}
+                        </div>
+                        <div class="reminder-actions">
+                            <button class="btn-complete" onclick="completeReminder('${r.id}')">
+                                ✓ Complete
+                            </button>
+                            <button class="btn-delete" onclick="deleteReminder('${r.id}')">
+                                🗑 Delete
+                            </button>
+                        </div>
+                    </div>
+                `).join('');
+            } catch (error) {
+                showError('Failed to load reminders: ' + error.message);
+            }
+        }
+        
+        async function addReminder() {
+            const input = document.getElementById('reminderInput');
+            const text = input.value.trim();
+            
+            if (!text) return;
+            
+            const button = document.getElementById('addButton');
+            button.disabled = true;
+            button.textContent = 'Adding...';
+            
+            try {
+                const response = await fetch(`${API_URL}/api/reminders`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ natural_language_input: text })
+                });
+                
+                if (!response.ok) throw new Error('Failed to create reminder');
+                
+                input.value = '';
+                await loadReminders();
+            } catch (error) {
+                showError('Failed to add reminder: ' + error.message);
+            } finally {
+                button.disabled = false;
+                button.textContent = 'Add Reminder';
+            }
+        }
+        
+        async function completeReminder(id) {
+            try {
+                await fetch(`${API_URL}/api/reminders/${id}/complete`, {
+                    method: 'PUT'
+                });
+                await loadReminders();
+            } catch (error) {
+                showError('Failed to complete reminder: ' + error.message);
+            }
+        }
+        
+        async function deleteReminder(id) {
+            if (!confirm('Delete this reminder?')) return;
+            
+            try {
+                await fetch(`${API_URL}/api/reminders/${id}`, {
+                    method: 'DELETE'
+                });
+                await loadReminders();
+            } catch (error) {
+                showError('Failed to delete reminder: ' + error.message);
+            }
+        }
+        
+        function showError(message) {
+            const errorDiv = document.getElementById('error');
+            errorDiv.textContent = message;
+            errorDiv.style.display = 'block';
+            setTimeout(() => errorDiv.style.display = 'none', 5000);
+        }
+        
+        // Event listeners
+        document.getElementById('addButton').addEventListener('click', addReminder);
+        document.getElementById('reminderInput').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') addReminder();
+        });
+        
+        // Load reminders on page load
+        loadReminders();
+    </script>
+</body>
+</html>
+```
+
+### POC Demo
+
+```bash
+# For CLI Option:
+pip install click requests tabulate
+
+# Start backend (Terminal 1)
+uvicorn main:app --reload --port 8000
+
+# Use CLI (Terminal 2)
+python cli.py add "Test reminder tomorrow at 2pm"
 python cli.py list
+python cli.py complete <reminder-id>
 
-# Complete reminder
-python cli.py complete <id>
+# For HTML Option:
+# Start backend (Terminal 1)
+uvicorn main:app --reload --port 8000
+
+# Serve frontend (Terminal 2)
+cd frontend
+python -m http.server 3000
+
+# Open browser to http://localhost:3000
 ```
 
-**Option B: Simple HTML + JavaScript (No Build Tools)**
-- Single `index.html` file with embedded CSS/JS
-- Fetch API to communicate with backend
-- No React/Vue/Angular needed
-- Open directly in browser
+### Integration Tests
 
-**Option C: Streamlit (Python Users)**
+```python
+# tests/test_cli.py
+from click.testing import CliRunner
+from cli import cli
+import requests_mock
+
+def test_cli_add():
+    """Test adding reminder via CLI."""
+    runner = CliRunner()
+    
+    with requests_mock.Mocker() as m:
+        m.post('http://localhost:8000/api/reminders', json={
+            'id': '123',
+            'title': 'Test',
+            'due_date_time': '2025-10-21T14:00:00Z',
+            'priority': 'medium'
+        })
+        
+        result = runner.invoke(cli, ['add', 'Test reminder tomorrow'])
+        assert result.exit_code == 0
+        assert '✅ Reminder created' in result.output
+
+def test_cli_list():
+    """Test listing reminders via CLI."""
+    runner = CliRunner()
+    
+    with requests_mock.Mocker() as m:
+        m.get('http://localhost:8000/api/reminders', json=[{
+            'id': '123',
+            'title': 'Test',
+            'due_date_time': '2025-10-21T14:00:00Z',
+            'priority': 'medium',
+            'status': 'active'
+        }])
+        
+        result = runner.invoke(cli, ['list'])
+        assert result.exit_code == 0
+        assert 'Test' in result.output
+```
+
+### Verification Checklist
+
+- [ ] Can add reminders through UI
+- [ ] Reminders display with correct information
+- [ ] Can complete reminders
+- [ ] Can delete reminders
+- [ ] UI updates automatically after actions
+- [ ] Error messages display properly
+- [ ] Responsive to different screen sizes (HTML option)
+
+**Deliverable**: Working user interface (CLI or HTML)
+
+---
+
+## Sub-Phase 1.5: Background Scheduler (2-3 days)
+
+**Goal**: Automatically check and notify for due reminders
+
+### Setup
+
 ```bash
-pip install streamlit
-streamlit run app.py
+pip install schedule
 ```
-Auto-creates UI from Python code, no frontend knowledge needed.
 
-**Tasks**
-- [ ] Choose UI approach based on your skills
-- [ ] Create reminder form
-- [ ] Display reminder list
-- [ ] Mark as complete/delete functionality
-- [ ] Basic error handling and validation
-- [ ] Testing and bug fixes
+### Implementation
 
-**Deliverable**: Functional UI accessible at `http://localhost:3000` or via CLI
+```python
+# scheduler.py
+import schedule
+import time
+import threading
+from datetime import datetime, timedelta
+from database import SessionLocal
+from models import Reminder
+import smtplib
+from email.mime.text import MIMEText
+import os
+
+class ReminderScheduler:
+    """Simple background scheduler for reminders."""
+    
+    def __init__(self):
+        self.running = False
+        self.thread = None
+    
+    def check_due_reminders(self):
+        """Check for reminders due in the next 5 minutes."""
+        print(f"[{datetime.now().strftime('%H:%M:%S')}] Checking for due reminders...")
+        
+        db = SessionLocal()
+        try:
+            now = datetime.utcnow()
+            soon = now + timedelta(minutes=5)
+            
+            # Find reminders due soon that haven't been notified recently
+            reminders = db.query(Reminder).filter(
+                Reminder.status == 'active',
+                Reminder.due_date_time >= now,
+                Reminder.due_date_time <= soon
+            ).all()
+            
+            for reminder in reminders:
+                # Check if already notified in last 10 minutes
+                if reminder.last_notified_at:
+                    time_since_notify = now - reminder.last_notified_at
+                    if time_since_notify < timedelta(minutes=10):
+                        continue
+                
+                print(f"🔔 REMINDER DUE: {reminder.title}")
+                self.send_notification(reminder, db)
+        
+        finally:
+            db.close()
+    
+    def send_notification(self, reminder, db):
+        """Send notification for a reminder."""
+        
+        # Console notification (always)
+        print(f"""
+        ╔════════════════════════════════════════╗
+        ║          REMINDER ALERT!               ║
+        ╠════════════════════════════════════════╣
+        ║ {reminder.title[:40]:^40} ║
+        ║ Due: {str(reminder.due_date_time)[:21]:^40} ║
+        ║ Priority: {reminder.priority.upper():^31} ║
+        ╚════════════════════════════════════════╝
+        """)
+        
+        # Email notification (if configured)
+        if os.getenv('GMAIL_ADDRESS'):
+            try:
+                self.send_email(reminder)
+            except Exception as e:
+                print(f"Failed to send email: {e}")
+        
+        # Update last_notified_at
+        reminder.last_notified_at = datetime.utcnow()
+        db.commit()
+    
+    def send_email(self, reminder):
+        """Send email notification via Gmail."""
+        sender = os.getenv('GMAIL_ADDRESS')
+        password = os.getenv('GMAIL_APP_PASSWORD')
+        recipient = os.getenv('NOTIFICATION_EMAIL', sender)
+        
+        if not (sender and password):
+            return
+        
+        msg = MIMEText(f"""
+Hi!
+
+This is your reminder:
+
+📌 {reminder.title}
+🕐 Due: {reminder.due_date_time}
+🎯 Priority: {reminder.priority}
+
+---
+Sent from your Reminder App
+        """)
+        
+        msg['Subject'] = f"Reminder: {reminder.title}"
+        msg['From'] = sender
+        msg['To'] = recipient
+        
+        with smtplib.SMTP_SSL('smtp.gmail.com', 465) as server:
+            server.login(sender, password)
+            server.send_message(msg)
+        
+        print(f"✅ Email sent to {recipient}")
+    
+    def start(self):
+        """Start the scheduler in a background thread."""
+        if self.running:
+            return
+        
+        self.running = True
+        
+        def run_scheduler():
+            # Check every minute
+            schedule.every(1).minutes.do(self.check_due_reminders)
+            
+            print("✅ Scheduler started (checking every minute)")
+            
+            while self.running:
+                schedule.run_pending()
+                time.sleep(1)
+        
+        self.thread = threading.Thread(target=run_scheduler, daemon=True)
+        self.thread.start()
+    
+    def stop(self):
+        """Stop the scheduler."""
+        self.running = False
+        if self.thread:
+            self.thread.join(timeout=5)
+        print("✅ Scheduler stopped")
+
+# Add to main.py
+from scheduler import ReminderScheduler
+
+scheduler = ReminderScheduler()
+
+@app.on_event("startup")
+async def startup():
+    init_db()
+    scheduler.start()
+
+@app.on_event("shutdown")
+async def shutdown():
+    scheduler.stop()
+```
+
+### POC Demo
+
+```python
+# demo_scheduler.py
+from scheduler import ReminderScheduler
+from database import SessionLocal, init_db
+from models import Reminder
+from datetime import datetime, timedelta
+import time
+
+def demo():
+    """Demonstrate the scheduler."""
+    
+    # Initialize database
+    init_db()
+    db = SessionLocal()
+    
+    # Create a reminder due in 2 minutes
+    reminder = Reminder(
+        user_id="demo_user",
+        title="Test Scheduler Notification",
+        description="This should trigger in 2 minutes",
+        due_date_time=datetime.utcnow() + timedelta(minutes=2),
+        timezone="UTC",
+        priority="high"
+    )
+    db.add(reminder)
+    db.commit()
+    
+    print(f"✅ Created test reminder due at {reminder.due_date_time}")
+    print("   Scheduler will check every minute...")
+    
+    # Start scheduler
+    scheduler = ReminderScheduler()
+    scheduler.start()
+    
+    # Wait for 5 minutes to see notification
+    try:
+        print("\n⏳ Waiting for notification (press Ctrl+C to stop)...")
+        time.sleep(300)
+    except KeyboardInterrupt:
+        print("\n\nStopping demo...")
+    finally:
+        scheduler.stop()
+        db.close()
+    
+    print("🎉 Scheduler Demo Complete!")
+
+if __name__ == "__main__":
+    demo()
+```
+
+### Integration Tests
+
+```python
+# tests/test_scheduler.py
+import pytest
+from scheduler import ReminderScheduler
+from database import SessionLocal, init_db
+from models import Reminder
+from datetime import datetime, timedelta
+import time
+
+def test_scheduler_detects_due_reminders():
+    """Test that scheduler detects due reminders."""
+    init_db()
+    db = SessionLocal()
+    
+    # Create reminder due now
+    reminder = Reminder(
+        user_id="test_user",
+        title="Test Due Now",
+        due_date_time=datetime.utcnow() + timedelta(minutes=1),
+        timezone="UTC"
+    )
+    db.add(reminder)
+    db.commit()
+    reminder_id = reminder.id
+    
+    # Run check
+    scheduler = ReminderScheduler()
+    scheduler.check_due_reminders()
+    
+    # Verify last_notified_at was updated
+    db.refresh(reminder)
+    assert reminder.last_notified_at is not None
+    
+    db.close()
+
+def test_scheduler_skips_already_notified():
+    """Test that scheduler doesn't notify twice."""
+    init_db()
+    db = SessionLocal()
+    
+    # Create reminder already notified
+    reminder = Reminder(
+        user_id="test_user",
+        title="Test Already Notified",
+        due_date_time=datetime.utcnow() + timedelta(minutes=1),
+        timezone="UTC",
+        last_notified_at=datetime.utcnow()
+    )
+    db.add(reminder)
+    db.commit()
+    last_notified = reminder.last_notified_at
+    
+    # Run check
+    scheduler = ReminderScheduler()
+    scheduler.check_due_reminders()
+    
+    # Verify last_notified_at hasn't changed
+    db.refresh(reminder)
+    assert reminder.last_notified_at == last_notified
+    
+    db.close()
+```
+
+### Run Tests
+
+```bash
+pytest tests/test_scheduler.py -v
+```
+
+### Verification Checklist
+
+- [ ] Scheduler starts automatically with API
+- [ ] Checks for due reminders every minute
+- [ ] Console notifications appear for due reminders
+- [ ] Email notifications sent (if configured)
+- [ ] Doesn't duplicate notifications
+- [ ] All tests pass
+- [ ] Can run for extended periods without crashes
+
+**Deliverable**: Working background scheduler
+
+---
+
+## Phase 1 Complete: Final Integration Test
+
+### End-to-End Test
+
+```python
+# tests/test_e2e.py
+import pytest
+from fastapi.testclient import TestClient
+from main import app
+from database import init_db
+from datetime import datetime, timedelta
+import time
+
+client = TestClient(app)
+
+def test_complete_workflow():
+    """Test the complete reminder workflow."""
+    
+    # 1. Create a reminder
+    create_response = client.post(
+        "/api/reminders",
+        json={
+            "natural_language_input": "Team meeting tomorrow at 2pm",
+            "timezone": "America/New_York"
+        }
+    )
+    assert create_response.status_code == 200
+    reminder = create_response.json()
+    assert "team meeting" in reminder["title"].lower()
+    
+    # 2. List reminders
+    list_response = client.get("/api/reminders")
+    assert list_response.status_code == 200
+    reminders = list_response.json()
+    assert len(reminders) >= 1
+    assert any(r["id"] == reminder["id"] for r in reminders)
+    
+    # 3. Get specific reminder
+    get_response = client.get(f"/api/reminders/{reminder['id']}")
+    assert get_response.status_code == 200
+    fetched = get_response.json()
+    assert fetched["title"] == reminder["title"]
+    
+    # 4. Complete reminder
+    complete_response = client.put(f"/api/reminders/{reminder['id']}/complete")
+    assert complete_response.status_code == 200
+    
+    # 5. Verify status changed
+    check_response = client.get(f"/api/reminders/{reminder['id']}")
+    assert check_response.json()["status"] == "completed"
+    
+    # 6. Delete reminder
+    delete_response = client.delete(f"/api/reminders/{reminder['id']}")
+    assert delete_response.status_code == 200
+    
+    # 7. Verify deletion
+    final_response = client.get(f"/api/reminders/{reminder['id']}")
+    assert final_response.status_code == 404
+    
+    print("✅ Complete end-to-end workflow test passed!")
+```
+
+### Run Complete Test Suite
+
+```bash
+# Run all tests
+pytest tests/ -v
+
+# Expected output:
+# tests/test_database.py::test_create_reminder PASSED
+# tests/test_database.py::test_read_reminders PASSED
+# tests/test_database.py::test_update_reminder PASSED
+# tests/test_database.py::test_delete_reminder PASSED
+# tests/test_openai_service.py::test_parse_simple_reminder PASSED
+# tests/test_openai_service.py::test_parse_urgent_reminder PASSED
+# tests/test_openai_service.py::test_parse_recurring_reminder PASSED
+# tests/test_api.py::test_health_check PASSED
+# tests/test_api.py::test_create_reminder PASSED
+# tests/test_api.py::test_list_reminders PASSED
+# tests/test_api.py::test_get_reminder PASSED
+# tests/test_api.py::test_complete_reminder PASSED
+# tests/test_api.py::test_delete_reminder PASSED
+# tests/test_scheduler.py::test_scheduler_detects_due_reminders PASSED
+# tests/test_scheduler.py::test_scheduler_skips_already_notified PASSED
+# tests/test_e2e.py::test_complete_workflow PASSED
+#
+# ================= 16 passed in 12.34s =================
+```
+
+### Phase 1 Final Deliverables
+
+✅ **Database Layer**: SQLite with full CRUD operations  
+✅ **OpenAI Integration**: Natural language parsing  
+✅ **REST API**: FastAPI with all endpoints  
+✅ **User Interface**: CLI or HTML frontend  
+✅ **Background Scheduler**: Automatic notifications  
+✅ **Complete Test Suite**: 16+ passing tests  
+✅ **Documentation**: Setup and usage guides  
+
+### Total Cost for Phase 1
+
+| Item | Cost |
+|------|------|
+| OpenAI API | $5-20/month |
+| Everything else | FREE |
+| **Total** | **$5-20/month** |
+
+**Next**: Move to Phase 2 for recurring reminders, advanced scheduling, and more features!
 
 #### Phase 1 Complete Project Structure
 
