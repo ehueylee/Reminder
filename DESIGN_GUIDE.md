@@ -785,27 +785,365 @@ def suggest_snooze_times(reminder: dict, current_time: datetime) -> List[dict]:
 
 ## Implementation Roadmap
 
-### Phase 1: MVP (4-6 weeks)
+### Phase 1: MVP - Local Development Setup (4-6 weeks)
 
-**Week 1-2: Core Infrastructure**
-- [ ] Set up development environment
-- [ ] Database schema implementation
-- [ ] User authentication system
+> **💡 Cost-Effective Approach**: This phase uses only local infrastructure and free-tier services. The only paid service required is OpenAI API (~$5-20/month for development).
+
+#### Local Infrastructure Setup
+
+**Required Tools (All Free)**
+- **Python 3.10+** or **Node.js 18+**: Runtime environment
+- **SQLite**: Local database (no server needed, file-based)
+- **OpenAI API Key**: Only paid component (~$0.002 per request with GPT-4o-mini)
+- **VS Code** or any text editor
+- **Postman** or **Thunder Client**: API testing (optional)
+
+**Optional for Enhanced Experience**
+- **PostgreSQL**: Can run locally via Docker or installer
+- **Redis**: Local instance for caching (optional in Phase 1)
+
+#### Week 1-2: Core Infrastructure (Local Setup)
+
+**Development Environment Setup**
+
+```bash
+# 1. Create project directory
+mkdir reminder-app
+cd reminder-app
+
+# 2. Set up Python virtual environment
+python -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
+
+# 3. Install dependencies
+pip install fastapi uvicorn sqlalchemy pydantic python-dotenv openai
+
+# 4. Create .env file
+cat > .env << EOF
+OPENAI_API_KEY=sk-your-key-here
+DATABASE_URL=sqlite:///./reminders.db
+SECRET_KEY=your-secret-key-for-jwt
+ENVIRONMENT=development
+EOF
+```
+
+**Tasks**
+- [ ] Set up Python/Node.js project structure
+- [ ] Install core dependencies
+- [ ] Create SQLite database schema
+- [ ] Implement simple JWT authentication (no external auth service)
 - [ ] Basic API endpoints (CRUD operations)
 - [ ] OpenAI API integration setup
 
-**Week 3-4: Reminder Engine**
-- [ ] Natural language parsing with OpenAI
-- [ ] Basic reminder storage and retrieval
-- [ ] Timezone handling
-- [ ] Simple notification system (email)
+**Deliverable**: REST API running on `http://localhost:8000`
 
-**Week 5-6: User Interface**
-- [ ] Basic web interface or CLI
+#### Week 3-4: Reminder Engine
+
+**Local Implementation**
+- [ ] Natural language parsing with OpenAI (using GPT-4o-mini for cost savings)
+- [ ] Basic reminder storage and retrieval with SQLite
+- [ ] Timezone handling using Python's `pytz` or JavaScript's `date-fns-tz`
+- [ ] Simple notification system:
+  - Console logging (Phase 1)
+  - Email via Gmail SMTP (free, no service needed)
+  - Browser notifications (for web interface)
+
+**Cost-Saving Tips**
+```python
+# Use GPT-4o-mini for development (10x cheaper than GPT-4)
+response = client.chat.completions.create(
+    model="gpt-4o-mini",  # $0.150 per 1M input tokens
+    messages=[...],
+    max_tokens=500  # Limit response size
+)
+
+# Cache common parsing patterns locally
+import shelve
+cache = shelve.open('reminder_cache.db')
+```
+
+**Deliverable**: Functional reminder parsing and storage
+
+#### Week 5-6: User Interface
+
+**Simple Local Frontend Options**
+
+**Option A: Command Line Interface (Fastest)**
+```bash
+# Create reminder
+python cli.py add "Remind me to call mom tomorrow at 3pm"
+
+# List reminders
+python cli.py list
+
+# Complete reminder
+python cli.py complete <id>
+```
+
+**Option B: Simple HTML + JavaScript (No Build Tools)**
+- Single `index.html` file with embedded CSS/JS
+- Fetch API to communicate with backend
+- No React/Vue/Angular needed
+- Open directly in browser
+
+**Option C: Streamlit (Python Users)**
+```bash
+pip install streamlit
+streamlit run app.py
+```
+Auto-creates UI from Python code, no frontend knowledge needed.
+
+**Tasks**
+- [ ] Choose UI approach based on your skills
 - [ ] Create reminder form
-- [ ] List/view reminders
-- [ ] Mark as complete/delete
+- [ ] Display reminder list
+- [ ] Mark as complete/delete functionality
+- [ ] Basic error handling and validation
 - [ ] Testing and bug fixes
+
+**Deliverable**: Functional UI accessible at `http://localhost:3000` or via CLI
+
+#### Phase 1 Complete Project Structure
+
+```
+reminder-app/
+├── backend/
+│   ├── main.py                 # FastAPI application
+│   ├── models.py               # Database models
+│   ├── schemas.py              # Pydantic schemas
+│   ├── database.py             # SQLite connection
+│   ├── auth.py                 # Simple JWT auth
+│   ├── openai_service.py       # OpenAI integration
+│   └── reminders.db            # SQLite database file
+├── frontend/
+│   ├── index.html              # Simple web UI (Option B)
+│   ├── style.css
+│   └── app.js
+├── cli.py                      # CLI tool (Option A)
+├── streamlit_app.py            # Streamlit UI (Option C)
+├── requirements.txt            # Python dependencies
+├── .env                        # Environment variables (git-ignored)
+├── .gitignore
+└── README.md
+```
+
+#### Local Testing Workflow
+
+```bash
+# Terminal 1: Start backend server
+cd backend
+uvicorn main:app --reload --port 8000
+
+# Terminal 2: Test API
+curl -X POST http://localhost:8000/api/reminders \
+  -H "Content-Type: application/json" \
+  -d '{"natural_language_input": "Remind me to test the app tomorrow"}'
+
+# Terminal 3: Start frontend (if using Option B)
+cd frontend
+python -m http.server 3000
+
+# Or use CLI (Option A)
+python cli.py add "Remind me to test the app tomorrow"
+```
+
+#### Free Email Notifications Setup
+
+**Using Gmail SMTP (No Cost)**
+
+```python
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+
+def send_email_notification(reminder: dict, recipient_email: str):
+    """Send reminder via Gmail SMTP (free)."""
+    
+    # Use your Gmail account (enable "App Passwords" in Google Account settings)
+    sender_email = "your.email@gmail.com"
+    app_password = os.getenv("GMAIL_APP_PASSWORD")  # Not your regular password!
+    
+    message = MIMEMultipart()
+    message["From"] = sender_email
+    message["To"] = recipient_email
+    message["Subject"] = f"Reminder: {reminder['title']}"
+    
+    body = f"""
+    Hi!
+    
+    This is your reminder:
+    
+    📌 {reminder['title']}
+    🕐 Due: {reminder['due_date_time']}
+    
+    Priority: {reminder['priority']}
+    
+    ---
+    Sent from your local Reminder App
+    """
+    
+    message.attach(MIMEText(body, "plain"))
+    
+    try:
+        with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
+            server.login(sender_email, app_password)
+            server.sendmail(sender_email, recipient_email, message.as_string())
+        print(f"✅ Email sent to {recipient_email}")
+    except Exception as e:
+        print(f"❌ Failed to send email: {e}")
+```
+
+**Setup Steps**:
+1. Go to Google Account settings
+2. Enable 2-Step Verification
+3. Generate an "App Password" for mail
+4. Use that password in your `.env` file
+
+```bash
+# Add to .env
+GMAIL_ADDRESS=your.email@gmail.com
+GMAIL_APP_PASSWORD=your-16-char-app-password
+```
+
+#### Background Task Scheduler (Local)
+
+**Simple Approach: No Celery/Redis Needed**
+
+```python
+import schedule
+import time
+import threading
+from datetime import datetime, timedelta
+
+class LocalScheduler:
+    """Simple local scheduler for checking reminders."""
+    
+    def __init__(self):
+        self.running = False
+    
+    def check_due_reminders(self):
+        """Check for reminders due in the next 5 minutes."""
+        print(f"[{datetime.now()}] Checking for due reminders...")
+        
+        # Query database
+        conn = sqlite3.connect('reminders.db')
+        cursor = conn.cursor()
+        
+        now = datetime.utcnow()
+        soon = now + timedelta(minutes=5)
+        
+        cursor.execute("""
+            SELECT id, user_id, title, due_date_time, notification_channels
+            FROM reminders
+            WHERE status = 'active'
+            AND due_date_time BETWEEN ? AND ?
+            AND (last_notified_at IS NULL OR last_notified_at < ?)
+        """, (now.isoformat(), soon.isoformat(), (now - timedelta(minutes=10)).isoformat()))
+        
+        reminders = cursor.fetchall()
+        
+        for reminder in reminders:
+            self.send_notification(reminder)
+        
+        conn.close()
+    
+    def send_notification(self, reminder):
+        """Send notification for reminder."""
+        # Send email, log to console, etc.
+        print(f"🔔 REMINDER: {reminder[2]} is due at {reminder[3]}")
+        # Update last_notified_at in database
+    
+    def start(self):
+        """Start the scheduler in a background thread."""
+        self.running = True
+        
+        def run_scheduler():
+            # Check every minute
+            schedule.every(1).minutes.do(self.check_due_reminders)
+            
+            while self.running:
+                schedule.run_pending()
+                time.sleep(1)
+        
+        thread = threading.Thread(target=run_scheduler, daemon=True)
+        thread.start()
+        print("✅ Scheduler started (checking every minute)")
+    
+    def stop(self):
+        """Stop the scheduler."""
+        self.running = False
+
+# Usage in main.py
+scheduler = LocalScheduler()
+
+@app.on_event("startup")
+async def startup_event():
+    scheduler.start()
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    scheduler.stop()
+```
+
+**Install**:
+```bash
+pip install schedule
+```
+
+#### Cost Breakdown for Phase 1
+
+| Component | Cost | Notes |
+|-----------|------|-------|
+| OpenAI API | $5-20/month | ~2,500-10,000 requests with GPT-4o-mini |
+| SQLite | Free | Local file-based database |
+| Python/Node.js | Free | Open source |
+| Gmail SMTP | Free | 500 emails/day limit |
+| Local Development | Free | Your own computer |
+| Domain Name | Optional | $12/year if you want custom domain later |
+| **Total** | **$5-20/month** | **Just OpenAI API!** |
+
+#### Migration Path to Production (Future Phases)
+
+When ready to scale, you can gradually migrate:
+
+1. **Database**: SQLite → PostgreSQL (free tier: Railway, Supabase, Neon)
+2. **Hosting**: Local → Cloud (free tier: Railway, Fly.io, Render)
+3. **Cache**: In-memory → Redis (free tier: Redis Cloud, Upstash)
+4. **Background Jobs**: Schedule library → Celery (when needed)
+5. **Monitoring**: Console logs → Free tools (Sentry free tier, Logflare)
+
+All of these have generous free tiers that work for initial production deployments!
+
+#### Quick Start Commands
+
+```bash
+# Clone or create project
+git clone <your-repo> reminder-app  # or create from scratch
+cd reminder-app
+
+# Backend setup
+python -m venv venv
+source venv/bin/activate  # Windows: venv\Scripts\activate
+pip install -r requirements.txt
+
+# Create .env file
+echo "OPENAI_API_KEY=sk-your-key" > .env
+echo "DATABASE_URL=sqlite:///./reminders.db" >> .env
+
+# Initialize database
+python -c "from database import init_db; init_db()"
+
+# Run backend
+uvicorn main:app --reload --port 8000
+
+# In another terminal, run CLI
+python cli.py add "Test reminder tomorrow at 2pm"
+python cli.py list
+
+# Or open browser to http://localhost:8000/docs for API playground
+```
+
+---
 
 ### Phase 2: Enhanced Features (6-8 weeks)
 
