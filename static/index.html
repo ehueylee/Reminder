@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Reminder App</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header>
+            <h1>🎯 Smart Reminder App</h1>
+            <p class="subtitle">Natural language powered reminders with AI</p>
+            <div class="health-status">
+                <span id="health-indicator" class="health-indicator">●</span>
+                <span id="health-text">Checking status...</span>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main>
+            <!-- Create Reminder Section -->
+            <section class="card create-section">
+                <h2>✨ Create New Reminder</h2>
+                <form id="create-form">
+                    <div class="form-group">
+                        <label for="natural-input">Tell me what to remind you about:</label>
+                        <textarea 
+                            id="natural-input" 
+                            placeholder="Example: Call dentist tomorrow at 2pm&#10;Team meeting every Monday at 10am&#10;Buy milk on the way home"
+                            rows="3"
+                        ></textarea>
+                        <div class="help-text">
+                            💡 Tip: Use natural language! The AI will understand dates, times, priorities, and recurring patterns.
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="user-id">Your ID:</label>
+                            <input 
+                                type="text" 
+                                id="user-id" 
+                                placeholder="e.g., user123" 
+                                value="user123"
+                            >
+                        </div>
+
+                        <div class="form-group">
+                            <label for="timezone">Timezone:</label>
+                            <select id="timezone">
+                                <option value="UTC">UTC</option>
+                                <option value="America/New_York">Eastern Time (US)</option>
+                                <option value="America/Chicago">Central Time (US)</option>
+                                <option value="America/Denver">Mountain Time (US)</option>
+                                <option value="America/Los_Angeles">Pacific Time (US)</option>
+                                <option value="Europe/London">London</option>
+                                <option value="Europe/Paris">Paris</option>
+                                <option value="Asia/Tokyo">Tokyo</option>
+                                <option value="Asia/Shanghai">Shanghai</option>
+                                <option value="Australia/Sydney">Sydney</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="button-group">
+                        <button type="button" id="parse-btn" class="btn btn-secondary">
+                            🔍 Parse Only
+                        </button>
+                        <button type="submit" class="btn btn-primary">
+                            ➕ Create Reminder
+                        </button>
+                    </div>
+                </form>
+
+                <!-- Parse Result -->
+                <div id="parse-result" class="parse-result" style="display:none;">
+                    <h3>📋 Parsed Information</h3>
+                    <div id="parse-content"></div>
+                </div>
+            </section>
+
+            <!-- Filters Section -->
+            <section class="card filters-section">
+                <h2>🔎 Filter Reminders</h2>
+                <div class="filter-controls">
+                    <div class="form-group">
+                        <label for="filter-status">Status:</label>
+                        <select id="filter-status">
+                            <option value="">All</option>
+                            <option value="pending">Pending</option>
+                            <option value="completed">Completed</option>
+                            <option value="cancelled">Cancelled</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="filter-priority">Priority:</label>
+                        <select id="filter-priority">
+                            <option value="">All</option>
+                            <option value="low">Low</option>
+                            <option value="medium">Medium</option>
+                            <option value="high">High</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="filter-tag">Tag:</label>
+                        <input type="text" id="filter-tag" placeholder="e.g., work">
+                    </div>
+
+                    <button id="refresh-btn" class="btn btn-secondary">🔄 Refresh</button>
+                </div>
+            </section>
+
+            <!-- Reminders List Section -->
+            <section class="card reminders-section">
+                <div class="section-header">
+                    <h2>📝 Your Reminders</h2>
+                    <span id="reminder-count" class="badge">0</span>
+                </div>
+
+                <div id="reminders-list" class="reminders-list">
+                    <div class="loading">Loading reminders...</div>
+                </div>
+            </section>
+        </main>
+
+        <!-- Footer -->
+        <footer>
+            <p>
+                Powered by FastAPI + OpenAI GPT-4o-mini |
+                <a href="http://127.0.0.1:8001/docs" target="_blank">API Docs</a>
+            </p>
+        </footer>
+    </div>
+
+    <!-- Edit Modal -->
+    <div id="edit-modal" class="modal">
+        <div class="modal-content">
+            <span class="modal-close">&times;</span>
+            <h2>✏️ Edit Reminder</h2>
+            <form id="edit-form">
+                <input type="hidden" id="edit-id">
+                
+                <div class="form-group">
+                    <label for="edit-title">Title:</label>
+                    <input type="text" id="edit-title" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="edit-description">Description:</label>
+                    <textarea id="edit-description" rows="3"></textarea>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="edit-priority">Priority:</label>
+                        <select id="edit-priority">
+                            <option value="low">Low</option>
+                            <option value="medium">Medium</option>
+                            <option value="high">High</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="edit-status">Status:</label>
+                        <select id="edit-status">
+                            <option value="pending">Pending</option>
+                            <option value="completed">Completed</option>
+                            <option value="cancelled">Cancelled</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="edit-tags">Tags (comma-separated):</label>
+                    <input type="text" id="edit-tags" placeholder="work, urgent">
+                </div>
+
+                <div class="button-group">
+                    <button type="button" class="btn btn-secondary" onclick="closeEditModal()">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save Changes</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="toast"></div>
+
+    <script src="app.js"></script>
+</body>
+</html>

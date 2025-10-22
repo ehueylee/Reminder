@@ -106,20 +106,54 @@ GET    /reminders/due/now      Get due reminders
 - Demo Script: 10/10 tests passing (100%)
 - Pytest: 26/26 tests passing (100%)
 
+### Phase 1.4: Simple UI ✅
+**Status:** COMPLETE  
+**Committed:** (pending)  
+**Time:** ~2 hours  
+
+**Deliverables:**
+- ✅ Lightweight web UI (HTML/CSS/JavaScript, no frameworks)
+- ✅ Natural language input with parse-only mode
+- ✅ Real-time reminder list with filters (status, priority, tag)
+- ✅ CRUD operations (create, update, complete, delete)
+- ✅ Modal editing interface
+- ✅ Toast notifications for user feedback
+- ✅ Responsive design (mobile-friendly)
+- ✅ AI confidence display with visual progress bar
+- ✅ Health monitoring with connection status
+- ✅ Integrated with FastAPI static files
+
+**Key Files:**
+- `static/index.html` (280 lines) - Main UI structure
+- `static/styles.css` (550+ lines) - Complete styling
+- `static/app.js` (500+ lines) - Application logic
+- `main.py` (updated) - Added static file serving
+
+**Features:**
+- Parse-only mode for testing NLP
+- Relative date display (Today, Tomorrow, in X days)
+- Color-coded priority badges
+- Recurring indicator
+- Tag filtering and display
+- Confirmation dialogs
+- Auto-refresh every 30 seconds
+
+**Accessible at:** `http://127.0.0.1:8001/ui/index.html`
+
 ---
 
 ## 🚧 Current Phase
 
-### Phase 1.4: Simple UI (Next)
+### Phase 1.5: Background Scheduler (Next)
 **Status:** NOT STARTED  
 **Estimated Time:** 2-3 hours  
 
 **Plan:**
-- Install Streamlit or create HTML/JS interface
-- Connect to REST API endpoints
-- Implement reminder creation/management UI
-- Display parsing confidence and suggestions
-- Add filtering and sorting
+- Install APScheduler
+- Implement periodic task checking
+- Query due reminders endpoint
+- Send notifications (console/email/webhook)
+- Handle recurring reminder expansion
 - Create POC demo
 
 ---
@@ -133,10 +167,10 @@ GET    /reminders/due/now      Get due reminders
 | 1.1 Database Foundation | ✅ COMPLETE | 10/10 passing | 100% |
 | 1.2 OpenAI Integration | ✅ COMPLETE | 18/18 passing | 100% |
 | 1.3 REST API | ✅ COMPLETE | 26/26 passing | 100% |
-| 1.4 Simple UI | ⏳ Pending | - | 0% |
+| 1.4 Simple UI | ✅ COMPLETE | Manual tested | 100% |
 | 1.5 Background Scheduler | ⏳ Pending | - | 0% |
 
-**Overall:** 60% complete (3/5 sub-phases)
+**Overall:** 80% complete (4/5 sub-phases)
 
 ---
 
@@ -146,8 +180,14 @@ GET    /reminders/due/now      Get due reminders
 
 ```
 ┌─────────────────────────────────────┐
-│         Phase 1.3: REST API         │  ← Next
+│       Phase 1.4: Web UI (HTML)      │
+│     Natural Language Interface      │
+└─────────────────────────────────────┘
+              ↓
+┌─────────────────────────────────────┐
+│         Phase 1.3: REST API         │
 │         (FastAPI + Uvicorn)         │
+└─────────────────────────────────────┘
 └─────────────────────────────────────┘
               ↓           ↓
     ┌─────────────┐  ┌─────────────┐

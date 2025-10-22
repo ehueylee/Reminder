@@ -6,6 +6,7 @@ Phase 1.3: REST API implementation
 from fastapi import FastAPI, HTTPException, Query, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from fastapi.staticfiles import StaticFiles
 from sqlalchemy.orm import Session
 from datetime import datetime, timedelta
 from typing import Optional, List, Literal
@@ -59,6 +60,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Mount static files (UI)
+app.mount("/ui", StaticFiles(directory="static", html=True), name="static")
 
 
 # Dependency: Get database session
