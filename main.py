@@ -26,6 +26,9 @@ from schemas import (
 # Initialize database
 init_db()
 
+# Import scheduler
+from scheduler import setup_default_scheduler, get_scheduler
+
 # Lifespan events
 from contextlib import asynccontextmanager
 
@@ -37,9 +40,18 @@ async def lifespan(app: FastAPI):
     print("📚 API Documentation: http://localhost:8000/docs")
     print("📖 ReDoc: http://localhost:8000/redoc")
     print("💚 Health Check: http://localhost:8000/health")
+    
+    # Start background scheduler
+    scheduler = setup_default_scheduler(check_interval_minutes=1)
+    print("⏰ Background scheduler started (checking every 1 minute)")
+    
     yield
+    
     # Shutdown
     print("👋 Reminder API shutting down...")
+    # Stop the scheduler
+    scheduler.stop()
+    print("⏰ Background scheduler stopped")
 
 
 # Create FastAPI app
