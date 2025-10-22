@@ -33,16 +33,18 @@ class Reminder(Base):
     recurrence_pattern = Column(JSON, nullable=True)
     
     # Status tracking
-    status = Column(String(20), default="active", index=True)
+    status = Column(String(20), default="pending", index=True)
     completed_at = Column(DateTime, nullable=True)
     
     # Metadata
     priority = Column(String(20), default="medium")
     tags = Column(JSON, default=list)
+    location = Column(String(500), nullable=True)
     
     # AI processing info
     natural_language_input = Column(String, nullable=True)
     parsed_by_ai = Column(Boolean, default=False)
+    ai_confidence = Column(Integer, nullable=True)  # Stored as percentage (0-100)
     
     # Notification tracking
     last_notified_at = Column(DateTime, nullable=True)

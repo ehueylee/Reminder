@@ -20,8 +20,10 @@ def create_reminder(
     tags: Optional[List[str]] = None,
     is_recurring: bool = False,
     recurrence_pattern: Optional[dict] = None,
+    location: Optional[str] = None,
     natural_language_input: Optional[str] = None,
-    parsed_by_ai: bool = False
+    parsed_by_ai: bool = False,
+    ai_confidence: Optional[float] = None
 ) -> Reminder:
     """Create a new reminder."""
     
@@ -35,8 +37,10 @@ def create_reminder(
         tags=tags or [],
         is_recurring=is_recurring,
         recurrence_pattern=recurrence_pattern,
+        location=location,
         natural_language_input=natural_language_input,
-        parsed_by_ai=parsed_by_ai
+        parsed_by_ai=parsed_by_ai,
+        ai_confidence=ai_confidence
     )
     
     db.add(reminder)
@@ -55,14 +59,18 @@ def get_reminders_by_user(
     db: Session,
     user_id: str,
     status: Optional[str] = None,
+    priority: Optional[str] = None,
     limit: int = 100
 ) -> List[Reminder]:
-    """Get all reminders for a user, optionally filtered by status."""
+    """Get all reminders for a user, optionally filtered by status and priority."""
     
     query = db.query(Reminder).filter(Reminder.user_id == user_id)
     
     if status:
         query = query.filter(Reminder.status == status)
+    
+    if priority:
+        query = query.filter(Reminder.priority == priority)
     
     return query.order_by(Reminder.due_date_time).limit(limit).all()
 
