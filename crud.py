@@ -113,7 +113,11 @@ def update_reminder(
 
 
 def complete_reminder(db: Session, reminder_id: str) -> Optional[Reminder]:
-    """Mark a reminder as completed."""
+    """
+    Mark a reminder as completed.
+    
+    If the reminder is recurring, automatically creates the next occurrence.
+    """
     
     reminder = get_reminder(db, reminder_id)
     
@@ -126,6 +130,18 @@ def complete_reminder(db: Session, reminder_id: str) -> Optional[Reminder]:
     
     db.commit()
     db.refresh(reminder)
+    
+    # Handle recurring reminders - create next occurrence
+    if reminder.is_recurring:
+        try:
+            from recurring_service import on_reminder_completed
+            on_reminder_completed(reminder)
+        except ImportError:
+            # Recurring service not available
+            pass
+        except Exception as e:
+            # Log error but don't fail completion
+            print(f"Warning: Failed to create next occurrence: {e}")
     
     return reminder
 
