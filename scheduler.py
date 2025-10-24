@@ -255,12 +255,13 @@ def get_scheduler() -> ReminderScheduler:
     return _scheduler_instance
 
 
-def setup_default_scheduler(check_interval_minutes: int = 1) -> ReminderScheduler:
+def setup_default_scheduler(check_interval_minutes: int = 1, enable_email: bool = True) -> ReminderScheduler:
     """
-    Set up scheduler with default console notification handler.
+    Set up scheduler with default notification handlers.
     
     Args:
         check_interval_minutes: How often to check for due reminders
+        enable_email: Enable email notifications (requires SMTP configuration)
         
     Returns:
         Configured ReminderScheduler instance
@@ -269,6 +270,21 @@ def setup_default_scheduler(check_interval_minutes: int = 1) -> ReminderSchedule
     
     # Add console notification handler
     scheduler.add_notification_handler(console_notification_handler)
+    
+    # Add email notification handler if enabled
+    if enable_email:
+        try:
+            from email_service import email_notification_handler, get_email_service
+            
+            # Check if email is configured
+            email_service = get_email_service()
+            if email_service.is_configured:
+                scheduler.add_notification_handler(email_notification_handler)
+                logger.info("📧 Email notifications enabled")
+            else:
+                logger.info("📧 Email notifications disabled (SMTP not configured)")
+        except ImportError:
+            logger.warning("📧 Email service not available")
     
     # Start the scheduler
     scheduler.start(check_interval_minutes)
