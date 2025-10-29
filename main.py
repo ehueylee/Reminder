@@ -5,7 +5,7 @@ Phase 1.3: REST API implementation
 
 from fastapi import FastAPI, HTTPException, Query, Depends
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy.orm import Session
 from datetime import datetime, timedelta
@@ -90,7 +90,14 @@ def get_db():
 # Root endpoint
 @app.get("/", tags=["Root"])
 async def root():
-    """Root endpoint with API information."""
+    """Redirect to the web UI."""
+    return RedirectResponse(url="/ui/index.html")
+
+
+# API info endpoint
+@app.get("/api", tags=["Root"])
+async def api_info():
+    """API information and available endpoints."""
     return {
         "message": "Reminder API",
         "version": "1.0.0",
@@ -628,4 +635,4 @@ async def internal_error_handler(request, exc):
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000, reload=True)
+    uvicorn.run("main:app", host="0.0.0.0", port=8001, reload=True)
