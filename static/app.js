@@ -1,5 +1,6 @@
 // API Configuration
-const API_BASE_URL = 'http://127.0.0.1:8001';
+const API_BASE_URL = 'https://web-production-129e7.up.railway.app/';
+// const API_BASE_URL = 'http://127.0.0.1:8001';
 
 // Global State
 let reminders = [];
