@@ -2,17 +2,41 @@
 
 A powerful reminder application with natural language processing powered by OpenAI GPT-4o-mini. Create reminders using everyday language, get intelligent notifications, and access your reminders anywhere - on the web or as a Progressive Web App on your iPhone!
 
+**Like ChatGPT Reminders, but unlimited and more powerful.** 🚀
+
+## 💡 Why Choose This Over ChatGPT?
+
+| Feature | ChatGPT Reminders | Smart Reminder App |
+|---------|------------------|-------------------|
+| **Maximum Tasks** | 🔴 10 limit | ✅ **Unlimited** |
+| **Interface** | Chat only | ✅ Chat + Visual Web UI |
+| **Cost** | $20/month (Plus) | ✅ **Free** |
+| **Priority Levels** | Basic | ✅ Low/Medium/High/Urgent |
+| **Tags & Filters** | Limited | ✅ Advanced filtering |
+| **Recurring Reminders** | ✅ Yes | ✅ Yes + Custom patterns |
+| **Email Notifications** | ✅ Yes | ✅ Yes (Gmail SMTP) |
+| **API Access** | ❌ No | ✅ Full REST API |
+| **Self-Hosted** | ❌ No | ✅ Own your data |
+| **PWA Install** | ❌ No | ✅ Install on iPhone/Android |
+| **Offline Mode** | ❌ No | ✅ Works offline |
+| **Bulk Operations** | ❌ No | ✅ Export/import/batch |
+| **Open Source** | ❌ No | ✅ MIT License |
+
+**Bottom line:** Same AI-powered natural language processing, but without limits or monthly fees.
+
 ## ✨ Features
 
 - 🗣️ **Natural Language Input** - "Call dentist tomorrow at 2pm" → automatically parsed
+- ♾️ **Unlimited Reminders** - No 10-task limit like ChatGPT
 - 🔄 **Recurring Reminders** - Daily, weekly, monthly, or custom patterns
 - 📧 **Email Notifications** - Get reminders delivered to your inbox
-- 🎨 **Priority Management** - Low, medium, high priority levels with visual badges
+- 🎨 **Priority Management** - Low, medium, high, urgent priority levels with visual badges
 - 🏷️ **Smart Tags** - Auto-extracted from natural language or manually added
 - 📱 **Progressive Web App** - Install on iPhone home screen like a native app
 - 💾 **Offline Support** - Works without internet connection (PWA mode)
 - 🌐 **Cross-Platform** - Works on desktop, mobile, iPhone, Android
-- 💰 **Zero Cost** - Free deployment options available
+- � **Open Source** - Own your data, self-host anywhere
+- �💰 **Zero Cost** - Free deployment options available (no $20/month fee)
 
 ## 🚀 Quick Start
 
@@ -741,6 +765,39 @@ This project is open source and available under the MIT License.
 
 ✨ **"Deployed in 15 minutes for free!"**
 - Railway + Vercel = zero cost production
+
+---
+
+## 🎯 Perfect For
+
+### Migrating from ChatGPT?
+
+Hit the 10-task limit? You're not alone! Here's how to upgrade:
+
+**What You Keep:**
+- ✅ Same natural language interface
+- ✅ Same AI intelligence (GPT-4o-mini)
+- ✅ Same background notifications
+- ✅ Same recurring reminder capabilities
+
+**What You Gain:**
+- 🚀 **Unlimited tasks** - Add 100s or 1000s of reminders
+- 📊 **Visual dashboard** - See all reminders at a glance
+- 🔍 **Advanced filtering** - By status, priority, tags
+- 📤 **Export/backup** - Download your data anytime
+- 🔌 **API access** - Integrate with other tools
+- 💰 **$0/month** - No subscription fees
+
+**Migration is easy:** Just start creating reminders with the same natural language you use in ChatGPT!
+
+### Who Should Use This?
+
+✅ **Power Users** - Need more than 10 reminders  
+✅ **Privacy-Conscious** - Want to self-host and own data  
+✅ **Developers** - Need API access for automation  
+✅ **Budget-Conscious** - Don't want to pay $20/month  
+✅ **Teams** - Share reminders (multi-user support)  
+✅ **iPhone Users** - Want a native-like PWA experience  
 
 ---
 
