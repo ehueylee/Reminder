@@ -11,22 +11,21 @@ from sqlalchemy.orm import sessionmaker
 from dotenv import load_dotenv
 from models import Base
 
-# Load environment variables
+# Load environment variables FIRST
 load_dotenv()
 
 # Configure logging
 logger = logging.getLogger(__name__)
 
-# Try to import config for production settings
-try:
-    from config import settings
-    DATABASE_URL = settings.DATABASE_URL
-except ImportError:
-    # Fallback if config.py doesn't exist (local dev)
-    DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./reminders.db")
-    # Fix Railway's postgres:// to postgresql://
-    if DATABASE_URL.startswith("postgres://"):
-        DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
+# Get DATABASE_URL from environment
+DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./reminders.db")
+
+# Fix Railway's postgres:// to postgresql://
+if DATABASE_URL.startswith("postgres://"):
+    DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
+    logger.info(f"Converted DATABASE_URL from postgres:// to postgresql://")
+
+logger.info(f"Using database: {DATABASE_URL.split('@')[0] if '@' in DATABASE_URL else DATABASE_URL.split(':')[0]}")
 
 # Create engine - works for both SQLite and PostgreSQL
 engine = create_engine(
