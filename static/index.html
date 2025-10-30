@@ -6,17 +6,18 @@
     <title>Smart Reminder App</title>
     
     <!-- PWA Manifest -->
-    <link rel="manifest" href="/manifest.json">
+    <link rel="manifest" href="/ui/manifest.json">
     
     <!-- iOS Meta Tags -->
+    <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="apple-mobile-web-app-title" content="Reminders">
-    <link rel="apple-touch-icon" href="/icon-180.png">
+    <link rel="apple-touch-icon" href="/ui/icon-180.png">
     
     <!-- Favicon -->
-    <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png">
-    <link rel="icon" type="image/png" sizes="512x512" href="/icon-512.png">
+    <link rel="icon" type="image/png" sizes="192x192" href="/ui/icon-192.png">
+    <link rel="icon" type="image/png" sizes="512x512" href="/ui/icon-512.png">
     
     <!-- Theme Color -->
     <meta name="theme-color" content="#667eea">
@@ -214,7 +215,7 @@
         // Register service worker for PWA functionality
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
-                navigator.serviceWorker.register('/service-worker.js')
+                navigator.serviceWorker.register('/ui/service-worker.js')
                     .then(registration => {
                         console.log('Service Worker registered successfully:', registration.scope);
                         

@@ -6,9 +6,11 @@ const RUNTIME_CACHE = 'reminder-runtime-v1';
 
 // Files to cache on install
 const STATIC_CACHE_URLS = [
-  '/',
-  '/app.js',
-  '/offline.html'
+  '/ui/',
+  '/ui/index.html',
+  '/ui/app.js',
+  '/ui/styles.css',
+  '/ui/offline.html'
 ];
 
 // Install event - cache static assets
@@ -84,7 +86,7 @@ self.addEventListener('fetch', (event) => {
         .catch(() => {
           // If network fails, try cache
           return caches.match(request).then((cachedResponse) => {
-            return cachedResponse || caches.match('/offline.html');
+            return cachedResponse || caches.match('/ui/offline.html');
           });
         })
     );
@@ -120,7 +122,7 @@ self.addEventListener('fetch', (event) => {
           })
           .catch(() => {
             // If both cache and network fail, show offline page
-            return caches.match('/offline.html');
+            return caches.match('/ui/offline.html');
           });
       })
   );
@@ -151,8 +153,8 @@ self.addEventListener('push', (event) => {
   
   const options = {
     body: event.data ? event.data.text() : 'New reminder notification',
-    icon: '/icon-192.png',
-    badge: '/icon-72.png',
+    icon: '/ui/icon-192.png',
+    badge: '/ui/icon-72.png',
     vibrate: [200, 100, 200],
     tag: 'reminder-notification',
     requireInteraction: false
@@ -170,6 +172,6 @@ self.addEventListener('notificationclick', (event) => {
   event.notification.close();
 
   event.waitUntil(
-    clients.openWindow('/')
+    clients.openWindow('/ui/')
   );
 });
