@@ -1,0 +1,728 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🏠 Self-Hosting Setup Wizard</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .wizard-container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            max-width: 700px;
+            width: 100%;
+            overflow: hidden;
+        }
+
+        .wizard-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .wizard-header h1 {
+            font-size: 28px;
+            margin-bottom: 10px;
+        }
+
+        .wizard-header p {
+            opacity: 0.9;
+            font-size: 16px;
+        }
+
+        .wizard-progress {
+            display: flex;
+            padding: 20px 30px;
+            background: #f8f9fa;
+            border-bottom: 2px solid #e9ecef;
+        }
+
+        .progress-step {
+            flex: 1;
+            text-align: center;
+            position: relative;
+            padding: 10px;
+        }
+
+        .progress-step.active .step-number {
+            background: #667eea;
+            color: white;
+        }
+
+        .progress-step.completed .step-number {
+            background: #10b981;
+            color: white;
+        }
+
+        .step-number {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: #e9ecef;
+            color: #6c757d;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            margin-bottom: 8px;
+        }
+
+        .step-title {
+            font-size: 12px;
+            color: #6c757d;
+        }
+
+        .wizard-body {
+            padding: 40px;
+        }
+
+        .step-content {
+            display: none;
+        }
+
+        .step-content.active {
+            display: block;
+            animation: fadeIn 0.3s;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .form-group {
+            margin-bottom: 25px;
+        }
+
+        .form-label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #333;
+        }
+
+        .form-help {
+            font-size: 13px;
+            color: #6c757d;
+            margin-top: 5px;
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid #e9ecef;
+            border-radius: 8px;
+            font-size: 15px;
+            transition: border-color 0.2s;
+        }
+
+        .form-control:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .checkbox-group input[type="checkbox"] {
+            width: 20px;
+            height: 20px;
+        }
+
+        .btn {
+            padding: 12px 30px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #5568d3;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-secondary {
+            background: #e9ecef;
+            color: #495057;
+        }
+
+        .btn-secondary:hover {
+            background: #dee2e6;
+        }
+
+        .btn-success {
+            background: #10b981;
+            color: white;
+        }
+
+        .btn-success:hover {
+            background: #059669;
+        }
+
+        .wizard-footer {
+            padding: 20px 40px;
+            background: #f8f9fa;
+            display: flex;
+            justify-content: space-between;
+            gap: 10px;
+        }
+
+        .alert {
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+
+        .alert-info {
+            background: #e7f3ff;
+            color: #014361;
+            border-left: 4px solid #0091ff;
+        }
+
+        .alert-success {
+            background: #d1fae5;
+            color: #065f46;
+            border-left: 4px solid #10b981;
+        }
+
+        .alert-warning {
+            background: #fff4e6;
+            color: #7c2d12;
+            border-left: 4px solid #f59e0b;
+        }
+
+        .code-box {
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 8px;
+            padding: 15px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            margin: 15px 0;
+            white-space: pre-wrap;
+            word-break: break-all;
+        }
+
+        .copy-btn {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 5px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 12px;
+            margin-top: 10px;
+        }
+
+        .copy-btn:hover {
+            background: #5568d3;
+        }
+
+        .checklist {
+            list-style: none;
+            padding: 0;
+        }
+
+        .checklist li {
+            padding: 12px;
+            margin-bottom: 10px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .checklist li::before {
+            content: "✓";
+            width: 24px;
+            height: 24px;
+            background: #10b981;
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .download-section {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+            text-align: center;
+        }
+
+        .download-section h3 {
+            margin-bottom: 15px;
+            color: #333;
+        }
+
+        .platform-buttons {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .platform-btn {
+            padding: 15px 30px;
+            background: white;
+            border: 2px solid #e9ecef;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .platform-btn:hover {
+            border-color: #667eea;
+            transform: translateY(-2px);
+        }
+
+        .platform-icon {
+            font-size: 32px;
+        }
+
+        .success-animation {
+            text-align: center;
+            padding: 40px 0;
+        }
+
+        .success-icon {
+            font-size: 80px;
+            margin-bottom: 20px;
+            animation: bounce 1s infinite;
+        }
+
+        @keyframes bounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-20px); }
+        }
+    </style>
+</head>
+<body>
+    <div class="wizard-container">
+        <!-- Header -->
+        <div class="wizard-header">
+            <h1>🏠 Self-Hosting Setup Wizard</h1>
+            <p>Own your data in 5 easy steps. No coding required!</p>
+        </div>
+
+        <!-- Progress Bar -->
+        <div class="wizard-progress">
+            <div class="progress-step active" data-step="1">
+                <div class="step-number">1</div>
+                <div class="step-title">Welcome</div>
+            </div>
+            <div class="progress-step" data-step="2">
+                <div class="step-number">2</div>
+                <div class="step-title">Download</div>
+            </div>
+            <div class="progress-step" data-step="3">
+                <div class="step-number">3</div>
+                <div class="step-title">API Key</div>
+            </div>
+            <div class="progress-step" data-step="4">
+                <div class="step-number">4</div>
+                <div class="step-title">Config</div>
+            </div>
+            <div class="progress-step" data-step="5">
+                <div class="step-number">5</div>
+                <div class="step-title">Launch</div>
+            </div>
+        </div>
+
+        <!-- Step 1: Welcome -->
+        <div class="wizard-body">
+            <div class="step-content active" data-step="1">
+                <h2>Welcome to Self-Hosting! 🎉</h2>
+                <div class="alert alert-info">
+                    <strong>Why self-host?</strong><br>
+                    • Your reminders stay on YOUR computer<br>
+                    • Nobody else can access your data<br>
+                    • No monthly fees (ChatGPT costs $20/month)<br>
+                    • Unlimited reminders (ChatGPT limits to 10)
+                </div>
+
+                <h3>What you'll need:</h3>
+                <ul class="checklist">
+                    <li>30 minutes of your time</li>
+                    <li>A Windows, Mac, or Linux computer</li>
+                    <li>OpenAI API key (~$0.15/month cost)</li>
+                    <li>Admin access to install Python</li>
+                </ul>
+
+                <div class="alert alert-warning">
+                    <strong>💡 First time?</strong> Don't worry! This wizard will guide you through every step with clear instructions and helpful links.
+                </div>
+            </div>
+
+            <!-- Step 2: Download Python & App -->
+            <div class="step-content" data-step="2">
+                <h2>Download Required Software</h2>
+                
+                <div class="form-group">
+                    <label class="form-label">Step 2.1: Install Python (Free)</label>
+                    <div class="download-section">
+                        <h3>Choose your operating system:</h3>
+                        <div class="platform-buttons">
+                            <div class="platform-btn" onclick="window.open('https://www.python.org/downloads/', '_blank')">
+                                <div class="platform-icon">🪟</div>
+                                <div>Windows</div>
+                            </div>
+                            <div class="platform-btn" onclick="window.open('https://www.python.org/downloads/macos/', '_blank')">
+                                <div class="platform-icon">🍎</div>
+                                <div>macOS</div>
+                            </div>
+                            <div class="platform-btn" onclick="window.open('https://www.python.org/downloads/source/', '_blank')">
+                                <div class="platform-icon">🐧</div>
+                                <div>Linux</div>
+                            </div>
+                        </div>
+                        <p class="form-help" style="margin-top: 15px;">
+                            ⚠️ <strong>Windows users:</strong> Check "Add Python to PATH" during installation!
+                        </p>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Step 2.2: Download Reminder App</label>
+                    <div class="download-section">
+                        <h3>Download the app code:</h3>
+                        <button class="btn btn-primary" onclick="window.open('https://github.com/ehueylee/Reminder/archive/refs/heads/main.zip', '_blank')">
+                            📦 Download ZIP File
+                        </button>
+                        <p class="form-help" style="margin-top: 15px;">
+                            After downloading, extract the ZIP to your Documents folder
+                        </p>
+                    </div>
+                </div>
+
+                <div class="alert alert-success">
+                    <strong>✅ Checklist:</strong><br>
+                    [ ] Python installed<br>
+                    [ ] App ZIP downloaded and extracted to Documents folder
+                </div>
+            </div>
+
+            <!-- Step 3: API Key -->
+            <div class="step-content" data-step="3">
+                <h2>Get Your OpenAI API Key</h2>
+                
+                <div class="alert alert-info">
+                    <strong>Why do I need this?</strong><br>
+                    OpenAI powers the natural language understanding. Example: "Call dentist tomorrow at 2pm" gets parsed into structured reminder data.
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Step 3.1: Create OpenAI Account</label>
+                    <button class="btn btn-primary" onclick="window.open('https://platform.openai.com/signup', '_blank')">
+                        🚀 Sign Up for OpenAI
+                    </button>
+                    <p class="form-help">Free to create account. You'll add $5 credit (lasts months).</p>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Step 3.2: Add Payment Method</label>
+                    <ol style="margin-left: 20px; color: #495057;">
+                        <li>Click "Settings" → "Billing"</li>
+                        <li>Add credit card</li>
+                        <li>Add $5 credit (typical usage: $0.15/month)</li>
+                    </ol>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Step 3.3: Create API Key</label>
+                    <button class="btn btn-primary" onclick="window.open('https://platform.openai.com/api-keys', '_blank')">
+                        🔑 Create API Key
+                    </button>
+                    <p class="form-help">Click "Create new secret key" → Copy the key (starts with "sk-")</p>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Paste Your API Key Here:</label>
+                    <input type="text" class="form-control" id="openai-key" placeholder="sk-proj-...your-key-here">
+                    <p class="form-help">⚠️ Keep this secret! Don't share it with anyone.</p>
+                </div>
+
+                <div class="alert alert-warning">
+                    <strong>💰 Cost:</strong> ~$0.15/month for 50 reminders. Much cheaper than ChatGPT Plus ($20/month)!
+                </div>
+            </div>
+
+            <!-- Step 4: Configuration -->
+            <div class="step-content" data-step="4">
+                <h2>Configure Your App</h2>
+                
+                <div class="form-group">
+                    <label class="form-label">Email Notifications (Optional)</label>
+                    <div class="checkbox-group">
+                        <input type="checkbox" id="enable-email" onchange="toggleEmailFields()">
+                        <label for="enable-email">Enable email reminders (recommended)</label>
+                    </div>
+                </div>
+
+                <div id="email-fields" style="display: none;">
+                    <div class="form-group">
+                        <label class="form-label">Your Gmail Address:</label>
+                        <input type="email" class="form-control" id="email-address" placeholder="yourname@gmail.com">
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Gmail App Password:</label>
+                        <input type="password" class="form-control" id="email-password" placeholder="16-character app password">
+                        <p class="form-help">
+                            <a href="https://myaccount.google.com/apppasswords" target="_blank">Click here to generate Gmail App Password</a>
+                            (Enable 2-Step Verification first)
+                        </p>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Generated Configuration:</label>
+                    <div class="code-box" id="config-preview">Your configuration will appear here...</div>
+                    <button class="copy-btn" onclick="copyConfig()">📋 Copy Configuration</button>
+                </div>
+
+                <div class="alert alert-info">
+                    <strong>Next step:</strong> You'll paste this configuration into a file called <code>.env</code> in your Reminder folder.
+                </div>
+            </div>
+
+            <!-- Step 5: Launch -->
+            <div class="step-content" data-step="5">
+                <h2>Launch Your Self-Hosted App! 🚀</h2>
+                
+                <div class="form-group">
+                    <label class="form-label">Final Steps:</label>
+                    
+                    <h3 style="margin-top: 20px;">1. Create .env file</h3>
+                    <ol style="margin-left: 20px; color: #495057;">
+                        <li>Open your Reminder folder (in Documents)</li>
+                        <li>Create a new text file called <code>.env</code> (note the dot!)</li>
+                        <li>Paste the configuration you copied in Step 4</li>
+                        <li>Save the file</li>
+                    </ol>
+
+                    <h3 style="margin-top: 20px;">2. Install Dependencies</h3>
+                    <p>Open Command Prompt (Windows) or Terminal (Mac) and run:</p>
+                    
+                    <div id="install-commands">
+                        <h4>Windows:</h4>
+                        <div class="code-box">cd Documents\Reminder
+python -m venv venv
+venv\Scripts\activate
+pip install -r requirements.txt</div>
+                        <button class="copy-btn" onclick="copyToClipboard(this.previousElementSibling.textContent)">📋 Copy</button>
+
+                        <h4 style="margin-top: 15px;">Mac/Linux:</h4>
+                        <div class="code-box">cd Documents/Reminder
+python3 -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt</div>
+                        <button class="copy-btn" onclick="copyToClipboard(this.previousElementSibling.textContent)">📋 Copy</button>
+                    </div>
+
+                    <h3 style="margin-top: 20px;">3. Start the App</h3>
+                    <div class="code-box">python main.py</div>
+                    <button class="copy-btn" onclick="copyToClipboard(this.previousElementSibling.textContent)">📋 Copy</button>
+
+                    <div class="alert alert-success" style="margin-top: 20px;">
+                        <strong>Success! 🎉</strong><br>
+                        Open your browser and go to: <a href="http://localhost:8001" target="_blank">http://localhost:8001</a>
+                    </div>
+                </div>
+
+                <div class="success-animation" style="display: none;" id="success-screen">
+                    <div class="success-icon">🎊</div>
+                    <h2>Congratulations!</h2>
+                    <p>Your self-hosted reminder app is ready!</p>
+                    <button class="btn btn-success" onclick="window.open('http://localhost:8001', '_blank')">
+                        🚀 Open My App
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Footer Navigation -->
+        <div class="wizard-footer">
+            <button class="btn btn-secondary" id="prev-btn" onclick="prevStep()" style="display: none;">
+                ← Previous
+            </button>
+            <button class="btn btn-primary" id="next-btn" onclick="nextStep()">
+                Next →
+            </button>
+        </div>
+    </div>
+
+    <script>
+        let currentStep = 1;
+        const totalSteps = 5;
+
+        function updateStep(step) {
+            // Update progress bar
+            document.querySelectorAll('.progress-step').forEach((el, index) => {
+                el.classList.remove('active', 'completed');
+                if (index + 1 < step) {
+                    el.classList.add('completed');
+                } else if (index + 1 === step) {
+                    el.classList.add('active');
+                }
+            });
+
+            // Update content
+            document.querySelectorAll('.step-content').forEach(el => {
+                el.classList.remove('active');
+            });
+            document.querySelector(`[data-step="${step}"]`).classList.add('active');
+
+            // Update buttons
+            document.getElementById('prev-btn').style.display = step === 1 ? 'none' : 'block';
+            
+            if (step === totalSteps) {
+                document.getElementById('next-btn').textContent = '✨ Finish';
+            } else {
+                document.getElementById('next-btn').textContent = 'Next →';
+            }
+
+            // Update config preview on step 4
+            if (step === 4) {
+                updateConfigPreview();
+            }
+        }
+
+        function nextStep() {
+            if (currentStep === totalSteps) {
+                // Show success screen
+                document.getElementById('success-screen').style.display = 'block';
+                document.getElementById('next-btn').style.display = 'none';
+                return;
+            }
+
+            if (validateStep(currentStep)) {
+                currentStep++;
+                updateStep(currentStep);
+            }
+        }
+
+        function prevStep() {
+            if (currentStep > 1) {
+                currentStep--;
+                updateStep(currentStep);
+            }
+        }
+
+        function validateStep(step) {
+            if (step === 3) {
+                const apiKey = document.getElementById('openai-key').value;
+                if (!apiKey || !apiKey.startsWith('sk-')) {
+                    alert('Please enter a valid OpenAI API key (starts with "sk-")');
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        function toggleEmailFields() {
+            const emailFields = document.getElementById('email-fields');
+            const checkbox = document.getElementById('enable-email');
+            emailFields.style.display = checkbox.checked ? 'block' : 'none';
+            updateConfigPreview();
+        }
+
+        function updateConfigPreview() {
+            const apiKey = document.getElementById('openai-key').value || 'YOUR_API_KEY_HERE';
+            const enableEmail = document.getElementById('enable-email').checked;
+            const emailAddress = document.getElementById('email-address').value || 'your-email@gmail.com';
+            const emailPassword = document.getElementById('email-password').value || 'your-app-password';
+
+            let config = `# OpenAI Configuration (Required)
+OPENAI_API_KEY=${apiKey}
+OPENAI_MODEL=gpt-4o-mini
+
+# Database (SQLite - local storage)
+DATABASE_URL=sqlite:///./reminders.db
+
+# Server Configuration
+PORT=8001
+`;
+
+            if (enableEmail) {
+                config += `
+# Email Notifications (Optional)
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USERNAME=${emailAddress}
+SMTP_PASSWORD=${emailPassword}
+SMTP_FROM_EMAIL=${emailAddress}
+SMTP_FROM_NAME=My Reminder App
+`;
+            } else {
+                config += `
+# Email Notifications (Disabled)
+# SMTP_HOST=smtp.gmail.com
+# SMTP_PORT=587
+# SMTP_USERNAME=your-email@gmail.com
+# SMTP_PASSWORD=your-app-password
+`;
+            }
+
+            document.getElementById('config-preview').textContent = config;
+        }
+
+        function copyConfig() {
+            const config = document.getElementById('config-preview').textContent;
+            copyToClipboard(config);
+            alert('✅ Configuration copied to clipboard!\n\nPaste this into your .env file.');
+        }
+
+        function copyToClipboard(text) {
+            navigator.clipboard.writeText(text).then(() => {
+                // Show temporary feedback
+                const originalText = event.target.textContent;
+                event.target.textContent = '✅ Copied!';
+                setTimeout(() => {
+                    event.target.textContent = originalText;
+                }, 2000);
+            });
+        }
+
+        // Initialize on page load
+        updateStep(1);
+    </script>
+</body>
+</html>
