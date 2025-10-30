@@ -70,6 +70,23 @@ function setupEventListeners() {
             closeEditModal();
         }
     });
+    
+    // Event delegation for reminder action buttons
+    document.getElementById('reminders-list').addEventListener('click', function(event) {
+        const button = event.target.closest('button[data-action]');
+        if (!button) return;
+        
+        const action = button.dataset.action;
+        const id = button.dataset.id;
+        
+        if (action === 'complete') {
+            completeReminder(id);
+        } else if (action === 'edit') {
+            editReminder(id);
+        } else if (action === 'delete') {
+            deleteReminder(id);
+        }
+    });
 }
 
 // Health Check
@@ -304,11 +321,11 @@ function displayReminders(remindersList) {
     const html = remindersList.map(reminder => `
         <div class="reminder-item ${reminder.status === 'completed' ? 'completed' : ''}">
             <div class="reminder-header">
-                <div class="reminder-title">${reminder.title}</div>
+                <div class="reminder-title">${escapeHtml(reminder.title)}</div>
                 <span class="priority-badge priority-${reminder.priority}">${reminder.priority}</span>
             </div>
             
-            ${reminder.description ? `<div class="reminder-description">${reminder.description}</div>` : ''}
+            ${reminder.description ? `<div class="reminder-description">${escapeHtml(reminder.description)}</div>` : ''}
             
             <div class="reminder-meta">
                 ${reminder.due_date_time ? `
@@ -323,7 +340,7 @@ function displayReminders(remindersList) {
                 ` : ''}
                 ${reminder.location ? `
                     <div class="meta-item">
-                        📍 ${reminder.location}
+                        📍 ${escapeHtml(reminder.location)}
                     </div>
                 ` : ''}
                 ${reminder.ai_confidence !== null && reminder.ai_confidence !== undefined ? `
@@ -338,20 +355,20 @@ function displayReminders(remindersList) {
             
             ${reminder.tags && reminder.tags.length > 0 ? `
                 <div class="reminder-tags">
-                    ${reminder.tags.map(tag => `<span class="tag">${tag}</span>`).join('')}
+                    ${reminder.tags.map(tag => `<span class="tag">${escapeHtml(tag)}</span>`).join('')}
                 </div>
             ` : ''}
             
             <div class="reminder-actions">
                 ${reminder.status !== 'completed' ? `
-                    <button class="btn btn-small btn-success" onclick="completeReminder('${reminder.id}')">
+                    <button class="btn btn-small btn-success" data-action="complete" data-id="${reminder.id}">
                         ✅ Complete
                     </button>
                 ` : ''}
-                <button class="btn btn-small btn-secondary" onclick="editReminder('${reminder.id}')">
+                <button class="btn btn-small btn-secondary" data-action="edit" data-id="${reminder.id}">
                     ✏️ Edit
                 </button>
-                <button class="btn btn-small btn-danger" onclick="deleteReminder('${reminder.id}')">
+                <button class="btn btn-small btn-danger" data-action="delete" data-id="${reminder.id}">
                     🗑️ Delete
                 </button>
             </div>
@@ -478,6 +495,13 @@ function showToast(message, type = 'info') {
 }
 
 // Utility Functions
+function escapeHtml(text) {
+    if (!text) return '';
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
 function formatDateTime(dateString) {
     if (!dateString) return 'Not set';
     
