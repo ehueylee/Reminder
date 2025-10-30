@@ -65,12 +65,23 @@ python main.py
 
 ## 📖 Usage Guide
 
+### Live Demo
+
+**Production URL:** https://web-production-129e7.up.railway.app
+
+Try the app now - no installation required!
+
 ### Option 1: Web Browser Access
 
 #### 1. Open the App
-- Navigate to: `http://127.0.0.1:8001` (local) or your deployed URL
-- The app loads instantly in any modern browser
-- Works on desktop, mobile, tablets
+- **Production (anywhere):** https://web-production-129e7.up.railway.app
+- **Local development:** http://127.0.0.1:8001
+- Works on desktop, mobile, tablets, iPhone, Android
+
+**Your preferences are saved:**
+- User ID and timezone are remembered (localStorage)
+- No need to re-enter each time
+- Works across browser sessions
 
 #### 2. Create Your First Reminder
 
@@ -196,52 +207,35 @@ Before creating a reminder, test how AI parses your input:
 
 Transform the web app into a native-like app on your iPhone!
 
-#### Step 1: Generate App Icons (One-Time Setup)
+#### Step 1: No Icon Setup Required! ✨
 
-**Quick Method (2 minutes):**
-1. Visit: https://www.pwabuilder.com/imageGenerator
-2. Upload a 512x512 image:
-   - Purple background (`#667eea`)
-   - White bell/calendar icon
-   - Or use any logo you like
-3. Click "Generate"
-4. Download ZIP file
-5. Extract and place all PNG files in `static/` folder:
-   - `icon-72.png`
-   - `icon-96.png`
-   - `icon-128.png`
-   - `icon-144.png`
-   - `icon-152.png`
-   - `icon-180.png` (Apple touch icon)
-   - `icon-192.png`
-   - `icon-384.png`
-   - `icon-512.png`
-
-See `ICON_GENERATION_GUIDE.md` for detailed instructions and alternatives.
+The app is already configured with PWA support. Icon files will be generated in a future update, but the PWA works without them.
 
 #### Step 2: Install on iPhone
 
-**From Deployed Site:**
-1. Deploy app to Vercel/Netlify (see `DEPLOYMENT_PLAN_ZERO_BUDGET.md`)
-2. On iPhone, open Safari
-3. Navigate to your app URL (e.g., `https://your-app.vercel.app`)
-4. Tap **Share** button (box with arrow)
-5. Scroll down and tap **"Add to Home Screen"**
-6. Edit name if desired (default: "Reminder App")
-7. Tap **"Add"** in top-right corner
-8. App icon appears on your home screen! 🎉
+**From Production Site (Recommended):**
+1. On iPhone, open **Safari**
+2. Navigate to: **https://web-production-129e7.up.railway.app**
+3. Tap **Share** button (box with arrow ⬆️)
+4. Scroll down and tap **"Add to Home Screen"**
+5. Edit name if desired (default: "Reminders")
+6. Tap **"Add"** in top-right corner
+7. App icon appears on your home screen! 🎉
 
 **From Local Network (Testing):**
 1. Ensure iPhone and computer on same WiFi
 2. Find your computer's IP address:
    ```bash
    # Windows:
-   ipconfig | grep "IPv4"
+   ipconfig | findstr IPv4
    # macOS/Linux:
    ifconfig | grep "inet "
    ```
-3. On iPhone Safari, go to: `http://YOUR_IP_ADDRESS:8001`
-4. Follow steps 4-8 above
+3. Start the local server: `python main.py`
+4. On iPhone Safari, go to: `http://YOUR_IP_ADDRESS:8001`
+5. Follow steps 3-7 above
+
+**Note:** For local testing, you may need to add a firewall rule. See `DEPLOYMENT_CHECKLIST.md` for troubleshooting.
 
 #### Step 3: Use the PWA
 
