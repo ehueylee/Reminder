@@ -79,9 +79,12 @@ function setupEventListeners() {
         const action = button.dataset.action;
         const id = button.dataset.id;
         
+        console.log('Button clicked:', action, 'ID:', id);
+        
         if (action === 'complete') {
             completeReminder(id);
         } else if (action === 'edit') {
+            console.log('Calling editReminder with ID:', id);
             editReminder(id);
         } else if (action === 'delete') {
             deleteReminder(id);
@@ -306,10 +309,13 @@ async function loadReminders() {
 
 // Display Reminders
 function displayReminders(remindersList) {
+    console.log('displayReminders called with', remindersList.length, 'reminders');
+    
     const listDiv = document.getElementById('reminders-list');
     
-    if (remindersList.length === 0) {
-        listDiv.innerHTML = `
+    try {
+        if (remindersList.length === 0) {
+            listDiv.innerHTML = `
             <div class="empty-state">
                 <div class="empty-state-icon">📭</div>
                 <p>No reminders found. Create one above!</p>
@@ -375,7 +381,14 @@ function displayReminders(remindersList) {
         </div>
     `).join('');
     
+    console.log('Generated HTML length:', html.length);
     listDiv.innerHTML = html;
+    console.log('Successfully updated DOM');
+    
+    } catch (error) {
+        console.error('Error in displayReminders:', error);
+        listDiv.innerHTML = `<div class="loading" style="color: var(--danger-color);">Error displaying reminders: ${error.message}</div>`;
+    }
 }
 
 // Complete Reminder
@@ -401,9 +414,21 @@ async function completeReminder(id) {
 
 // Edit Reminder
 function editReminder(id) {
-    const reminder = reminders.find(r => r.id === id);
-    if (!reminder) return;
+    console.log('editReminder called with ID:', id);
+    console.log('Total reminders:', reminders.length);
+    console.log('Looking for reminder with id:', id);
     
+    const reminder = reminders.find(r => r.id === id);
+    
+    console.log('Found reminder:', reminder);
+    
+    if (!reminder) {
+        console.error('Reminder not found!');
+        showToast('Reminder not found', 'error');
+        return;
+    }
+    
+    console.log('Setting modal fields...');
     document.getElementById('edit-id').value = reminder.id;
     document.getElementById('edit-title').value = reminder.title;
     document.getElementById('edit-description').value = reminder.description || '';
@@ -411,6 +436,7 @@ function editReminder(id) {
     document.getElementById('edit-status').value = reminder.status;
     document.getElementById('edit-tags').value = reminder.tags ? reminder.tags.join(', ') : '';
     
+    console.log('Showing modal...');
     document.getElementById('edit-modal').style.display = 'block';
 }
 
