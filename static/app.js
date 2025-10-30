@@ -12,6 +12,9 @@ let currentFilters = {
 
 // Initialize App
 document.addEventListener('DOMContentLoaded', function() {
+    // Load saved user preferences
+    loadUserPreferences();
+    
     // Check API health
     checkHealth();
     
@@ -24,6 +27,25 @@ document.addEventListener('DOMContentLoaded', function() {
     // Auto-refresh every 30 seconds
     setInterval(loadReminders, 30000);
 });
+
+// Load user preferences from localStorage
+function loadUserPreferences() {
+    const savedUserId = localStorage.getItem('userId');
+    const savedTimezone = localStorage.getItem('timezone');
+    
+    if (savedUserId) {
+        document.getElementById('user-id').value = savedUserId;
+    }
+    if (savedTimezone) {
+        document.getElementById('timezone').value = savedTimezone;
+    }
+}
+
+// Save user preferences to localStorage
+function saveUserPreferences(userId, timezone) {
+    localStorage.setItem('userId', userId);
+    localStorage.setItem('timezone', timezone);
+}
 
 // Event Listeners
 function setupEventListeners() {
@@ -194,6 +216,9 @@ async function handleCreateReminder(event) {
         return;
     }
     
+    // Save user preferences
+    saveUserPreferences(userId, timezone);
+    
     const submitBtn = event.target.querySelector('button[type="submit"]');
     submitBtn.disabled = true;
     submitBtn.textContent = '⏳ Creating...';
@@ -216,6 +241,8 @@ async function handleCreateReminder(event) {
         if (response.ok) {
             showToast('✅ Reminder created successfully!', 'success');
             document.getElementById('create-form').reset();
+            // Restore user preferences after reset
+            loadUserPreferences();
             document.getElementById('parse-result').style.display = 'none';
             loadReminders();
         } else {
@@ -317,14 +344,14 @@ function displayReminders(remindersList) {
             
             <div class="reminder-actions">
                 ${reminder.status !== 'completed' ? `
-                    <button class="btn btn-small btn-success" onclick="completeReminder(${reminder.id})">
+                    <button class="btn btn-small btn-success" onclick="completeReminder('${reminder.id}')">
                         ✅ Complete
                     </button>
                 ` : ''}
-                <button class="btn btn-small btn-secondary" onclick="editReminder(${reminder.id})">
+                <button class="btn btn-small btn-secondary" onclick="editReminder('${reminder.id}')">
                     ✏️ Edit
                 </button>
-                <button class="btn btn-small btn-danger" onclick="deleteReminder(${reminder.id})">
+                <button class="btn btn-small btn-danger" onclick="deleteReminder('${reminder.id}')">
                     🗑️ Delete
                 </button>
             </div>
