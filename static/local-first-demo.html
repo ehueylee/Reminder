@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Local-First Demo - IndexedDB</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .card {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        h1 { color: #2563eb; }
+        h2 { color: #64748b; margin-top: 30px; }
+        .status {
+            padding: 15px;
+            border-radius: 8px;
+            margin: 15px 0;
+        }
+        .status.online {
+            background: #d1fae5;
+            border-left: 4px solid #10b981;
+        }
+        .status.offline {
+            background: #fee2e2;
+            border-left: 4px solid #ef4444;
+        }
+        .btn {
+            background: #2563eb;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            margin: 5px;
+            font-size: 14px;
+        }
+        .btn:hover {
+            background: #1d4ed8;
+        }
+        .btn-secondary {
+            background: #64748b;
+        }
+        .btn-danger {
+            background: #ef4444;
+        }
+        pre {
+            background: #f8fafc;
+            padding: 15px;
+            border-radius: 8px;
+            overflow-x: auto;
+        }
+        .form-group {
+            margin: 15px 0;
+        }
+        label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 5px;
+        }
+        input, textarea {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 14px;
+        }
+        .reminder-list {
+            margin: 20px 0;
+        }
+        .reminder-item {
+            background: #f8fafc;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 10px 0;
+            border-left: 4px solid #2563eb;
+        }
+        .badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            margin: 0 5px;
+        }
+        .badge-pending {
+            background: #fef3c7;
+            color: #92400e;
+        }
+        .badge-synced {
+            background: #d1fae5;
+            color: #065f46;
+        }
+        .toggle {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .switch {
+            position: relative;
+            width: 60px;
+            height: 30px;
+        }
+        .switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #ccc;
+            transition: .4s;
+            border-radius: 30px;
+        }
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 22px;
+            width: 22px;
+            left: 4px;
+            bottom: 4px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+        input:checked + .slider {
+            background-color: #2563eb;
+        }
+        input:checked + .slider:before {
+            transform: translateX(30px);
+        }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h1>💾 Local-First Reminder Demo</h1>
+        <p>
+            <strong>Your data lives in YOUR browser.</strong> 
+            Optional cloud sync for backup/multi-device access.
+        </p>
+
+        <!-- Online/Offline Status -->
+        <div id="status" class="status">
+            <strong>Status:</strong> <span id="status-text">Checking...</span>
+        </div>
+
+        <!-- Sync Toggle -->
+        <div class="toggle">
+            <label>Cloud Sync:</label>
+            <label class="switch">
+                <input type="checkbox" id="sync-toggle" checked onchange="toggleSync()">
+                <span class="slider"></span>
+            </label>
+            <span id="sync-status">Enabled</span>
+        </div>
+    </div>
+
+    <!-- Create Reminder -->
+    <div class="card">
+        <h2>Create Reminder (Stored Locally)</h2>
+        <div class="form-group">
+            <label>Title:</label>
+            <input type="text" id="title" placeholder="Call dentist tomorrow at 2pm">
+        </div>
+        <div class="form-group">
+            <label>User ID:</label>
+            <input type="text" id="user-id" value="demo-user" readonly>
+        </div>
+        <button class="btn" onclick="createReminder()">💾 Save to IndexedDB</button>
+        <small style="display: block; margin-top: 10px; color: #64748b;">
+            ✅ Saves locally first, syncs to cloud if enabled
+        </small>
+    </div>
+
+    <!-- Reminders List -->
+    <div class="card">
+        <h2>My Reminders (From IndexedDB)</h2>
+        <button class="btn btn-secondary" onclick="loadReminders()">🔄 Refresh</button>
+        <div id="reminders-list" class="reminder-list">
+            <!-- Reminders will appear here -->
+        </div>
+    </div>
+
+    <!-- Sync Status -->
+    <div class="card">
+        <h2>Sync Status</h2>
+        <button class="btn btn-secondary" onclick="checkSyncStatus()">📊 Check Status</button>
+        <button class="btn" onclick="syncAll()">☁️ Sync Now</button>
+        <pre id="sync-info">Click "Check Status" to see sync details</pre>
+    </div>
+
+    <!-- Export/Import -->
+    <div class="card">
+        <h2>Data Ownership</h2>
+        <button class="btn" onclick="exportData()">⬇️ Download My Data (JSON)</button>
+        <button class="btn btn-secondary" onclick="document.getElementById('import-file').click()">
+            ⬆️ Import Backup
+        </button>
+        <input type="file" id="import-file" accept=".json" style="display: none" onchange="importData(event)">
+        <button class="btn btn-danger" onclick="clearAllData()">🗑️ Clear All Local Data</button>
+        <p style="margin-top: 15px; color: #64748b;">
+            💡 Your data is stored in your browser's IndexedDB. 
+            Export regularly for backup!
+        </p>
+    </div>
+
+    <!-- Storage Info -->
+    <div class="card">
+        <h2>Where is My Data?</h2>
+        <pre id="storage-info">Loading storage info...</pre>
+    </div>
+
+    <!-- Include our IndexedDB library -->
+    <script src="db.js"></script>
+
+    <script>
+        // Update online/offline status
+        function updateStatus() {
+            const statusDiv = document.getElementById('status');
+            const statusText = document.getElementById('status-text');
+            
+            if (navigator.onLine) {
+                statusDiv.className = 'status online';
+                statusText.textContent = '🟢 Online - Can sync to cloud';
+            } else {
+                statusDiv.className = 'status offline';
+                statusText.textContent = '🔴 Offline - Working locally only';
+            }
+        }
+
+        // Toggle sync
+        function toggleSync() {
+            const enabled = document.getElementById('sync-toggle').checked;
+            localDB.setSyncEnabled(enabled);
+            document.getElementById('sync-status').textContent = enabled ? 'Enabled' : 'Disabled';
+        }
+
+        // Create reminder
+        async function createReminder() {
+            const title = document.getElementById('title').value;
+            const userId = document.getElementById('user-id').value;
+
+            if (!title) {
+                alert('Please enter a title');
+                return;
+            }
+
+            try {
+                const reminder = await localDB.createReminder({
+                    title: title,
+                    user_id: userId,
+                    due_date_time: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+                    timezone: 'America/New_York',
+                    priority: 'medium',
+                    status: 'pending',
+                    tags: [],
+                    description: 'Created from demo'
+                });
+
+                alert(`✅ Reminder created locally!\nID: ${reminder.id}\nSync: ${reminder.sync_status}`);
+                document.getElementById('title').value = '';
+                loadReminders();
+            } catch (error) {
+                alert('❌ Error: ' + error.message);
+            }
+        }
+
+        // Load reminders
+        async function loadReminders() {
+            const userId = document.getElementById('user-id').value;
+            const remindersList = document.getElementById('reminders-list');
+
+            try {
+                const reminders = await localDB.getReminders(userId);
+                
+                if (reminders.length === 0) {
+                    remindersList.innerHTML = '<p style="color: #64748b;">No reminders yet. Create one above!</p>';
+                    return;
+                }
+
+                remindersList.innerHTML = reminders.map(r => `
+                    <div class="reminder-item">
+                        <strong>${r.title}</strong>
+                        <span class="badge badge-${r.sync_status === 'synced' ? 'synced' : 'pending'}">
+                            ${r.sync_status === 'synced' ? '☁️ Synced' : '⏳ Pending'}
+                        </span>
+                        <br>
+                        <small>Due: ${new Date(r.due_date_time).toLocaleString()}</small>
+                        <br>
+                        <small>ID: ${r.id} | Created: ${new Date(r.created_at).toLocaleString()}</small>
+                        <br>
+                        <button class="btn btn-danger" style="margin-top: 10px; padding: 8px 16px; font-size: 12px;" 
+                                onclick="deleteReminder(${r.id})">
+                            🗑️ Delete
+                        </button>
+                    </div>
+                `).join('');
+            } catch (error) {
+                remindersList.innerHTML = `<p style="color: #ef4444;">Error: ${error.message}</p>`;
+            }
+        }
+
+        // Delete reminder
+        async function deleteReminder(id) {
+            if (!confirm('Delete this reminder?')) return;
+
+            try {
+                await localDB.deleteReminder(id);
+                alert('✅ Reminder deleted from local storage');
+                loadReminders();
+            } catch (error) {
+                alert('❌ Error: ' + error.message);
+            }
+        }
+
+        // Check sync status
+        async function checkSyncStatus() {
+            const userId = document.getElementById('user-id').value;
+            try {
+                const status = await localDB.getSyncStatus(userId);
+                document.getElementById('sync-info').textContent = JSON.stringify(status, null, 2);
+            } catch (error) {
+                document.getElementById('sync-info').textContent = 'Error: ' + error.message;
+            }
+        }
+
+        // Sync all
+        async function syncAll() {
+            try {
+                const count = await localDB.syncAll();
+                alert(`✅ Synced ${count} reminders to cloud`);
+                loadReminders();
+            } catch (error) {
+                alert('❌ Sync error: ' + error.message);
+            }
+        }
+
+        // Export data
+        async function exportData() {
+            const userId = document.getElementById('user-id').value;
+            try {
+                const data = await localDB.exportData(userId);
+                
+                const blob = new Blob([JSON.stringify(data, null, 2)], {type: 'application/json'});
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `reminders_backup_${userId}_${new Date().toISOString().split('T')[0]}.json`;
+                a.click();
+                URL.revokeObjectURL(url);
+
+                alert(`✅ Exported ${data.reminders.length} reminders`);
+            } catch (error) {
+                alert('❌ Export error: ' + error.message);
+            }
+        }
+
+        // Import data
+        async function importData(event) {
+            const userId = document.getElementById('user-id').value;
+            const file = event.target.files[0];
+            if (!file) return;
+
+            try {
+                const text = await file.text();
+                const data = JSON.parse(text);
+                const result = await localDB.importData(data, userId);
+
+                alert(`✅ Import complete!\nImported: ${result.imported}\nSkipped: ${result.skipped}\nErrors: ${result.errors.length}`);
+                loadReminders();
+                event.target.value = '';
+            } catch (error) {
+                alert('❌ Import error: ' + error.message);
+                event.target.value = '';
+            }
+        }
+
+        // Clear all data
+        async function clearAllData() {
+            if (!confirm('⚠️ This will delete ALL local data. Continue?')) return;
+            if (!confirm('Are you REALLY sure? This cannot be undone!')) return;
+
+            try {
+                await localDB.clearAll();
+                alert('✅ All local data cleared');
+                loadReminders();
+            } catch (error) {
+                alert('❌ Error: ' + error.message);
+            }
+        }
+
+        // Show storage info
+        async function showStorageInfo() {
+            const info = document.getElementById('storage-info');
+            
+            if (navigator.storage && navigator.storage.estimate) {
+                const estimate = await navigator.storage.estimate();
+                const used = (estimate.usage / 1024 / 1024).toFixed(2);
+                const quota = (estimate.quota / 1024 / 1024).toFixed(2);
+                const percent = ((estimate.usage / estimate.quota) * 100).toFixed(2);
+
+                info.textContent = `Storage Used: ${used} MB / ${quota} MB (${percent}%)
+
+IndexedDB Location (varies by browser):
+- Windows: C:\\Users\\YourName\\AppData\\Local\\Chrome\\User Data\\Default\\IndexedDB\\
+- Mac: ~/Library/Application Support/Google/Chrome/Default/IndexedDB/
+- Linux: ~/.config/google-chrome/Default/IndexedDB/
+
+Database Name: ${localDB.dbName}
+Your data is stored LOCALLY on this device.`;
+            } else {
+                info.textContent = 'Storage API not available in this browser.';
+            }
+        }
+
+        // Initialize
+        window.addEventListener('online', updateStatus);
+        window.addEventListener('offline', updateStatus);
+        
+        // Auto-load on page load
+        localDB.init().then(() => {
+            updateStatus();
+            loadReminders();
+            showStorageInfo();
+        });
+    </script>
+</body>
+</html>
